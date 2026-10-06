@@ -1,5 +1,8 @@
-# Draft for a merge request to https://gitlab.com/fdroid/fdroiddata (metadata/site.yaft.app.yml).
-# Check it with `fdroid lint` and `fdroid build -v -l site.yaft.app` before submitting.
+# Copy of metadata/site.yaft.app.yml in https://gitlab.com/fdroid/fdroiddata, in fdroid rewritemeta's canonical form.
+AntiFeatures:
+  NonFreeNet:
+    en-US: Uploading sends sessions to yaft.site, whose server code isn't open source.
+      Recording and the on-phone viewer work without it.
 Categories:
   - Sports & Health
 License: GPL-3.0-only
@@ -12,27 +15,22 @@ AutoName: yaft
 
 RepoType: git
 Repo: https://github.com/cbrasser/yaft-android.git
-
-AntiFeatures:
-  NonFreeNet:
-    en-US: Uploading sends sessions to yaft.site, whose server code isn't open source. Recording and the on-phone viewer work without it.
-
-# Publish the developer-signed APK from GitHub Releases when F-Droid's rebuild matches it.
 Binaries: https://github.com/cbrasser/yaft-android/releases/download/v%v/yaft-%v.apk
-AllowedAPKSigningKeys: REPLACE_WITH_SHA256_OF_THE_SIGNING_CERTIFICATE
 
 Builds:
   - versionName: 0.1.0
     versionCode: 1
-    commit: v0.1.0
+    commit: 03007b4f8718094068ec7cd0baa161c5c1190e0a
     subdir: app
+    sudo:
+      - echo "deb https://deb.debian.org/debian trixie main" > /etc/apt/sources.list.d/trixie.list
+      - apt-get update
+      - apt-get install -y -t trixie openjdk-21-jdk-headless
+      - update-alternatives --auto java
     gradle:
       - yes
-    # F-Droid's default JDK may differ from CI's; build with 21 like the release workflow.
-    sudo:
-      - apt-get update
-      - apt-get install -y openjdk-21-jdk-headless
-      - update-java-alternatives -a
+
+AllowedAPKSigningKeys: ce5d3f5be5e6e4abf5cddc99f696283a393e86aab1d35bcb4c5166e03b1ff9d8
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
