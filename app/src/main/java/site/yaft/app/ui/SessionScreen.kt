@@ -34,11 +34,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import site.yaft.app.data.RemoteSession
 import site.yaft.app.data.SessionMeta
 import site.yaft.app.data.SessionStore
 import site.yaft.app.net.UploadResult
@@ -51,6 +53,8 @@ fun SessionScreen(
     siteUrl: String,
     signedIn: Boolean,
     uploader: Uploader,
+    remote: RemoteSession?,
+    onUploaded: () -> Unit,
     onBack: () -> Unit,
     onSignIn: () -> Unit,
 ) {
@@ -73,7 +77,10 @@ fun SessionScreen(
         message = null
         scope.launch {
             when (val r = uploader.upload(meta.copy(place = place.trim()), allowDuplicate)) {
-                UploadResult.Done -> message = "Saved to yaft."
+                UploadResult.Done -> {
+                    message = "Saved to yaft."
+                    onUploaded()
+                }
                 is UploadResult.Duplicate -> duplicateOf = r.otherId
                 UploadResult.SignedOut -> onSignIn()
                 is UploadResult.Failed -> message = r.message
@@ -105,7 +112,8 @@ fun SessionScreen(
                     Stat("Top speed (3 s)", "${kmh(meta.top3Kmh)} km/h", Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(12.dp))
-                Text("yaft.site works out runs, flights, turns and wind when you upload.", color = Yaft.ink2)
+                if (uploaded && remote != null) Text(remote.summary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                else Text("yaft.site works out runs, flights, turns and wind when you upload.", color = Yaft.ink2)
             }
             Leaf(Modifier.fillMaxWidth()) {
                 if (!uploaded) {

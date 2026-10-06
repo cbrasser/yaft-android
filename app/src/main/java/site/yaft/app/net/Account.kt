@@ -57,12 +57,18 @@ class Account(context: Context) {
                 putString(SUPABASE_URL, url)
                 putString(SUPABASE_KEY, key)
             }
+            val previous = prefs.getString(USER_ID, null)
             saveTokens(res.json)
+            if (previous != null && previous != prefs.getString(USER_ID, null)) onSignOut()
             _rider.value = currentRider()
         }
     }
 
+    /** Called after signing out, so data of that rider is dropped. */
+    var onSignOut: () -> Unit = {}
+
     fun signOut() {
+        onSignOut()
         prefs.edit {
             remove(ACCESS); remove(REFRESH); remove(EXPIRES_AT); remove(EMAIL); remove(USER_ID)
         }

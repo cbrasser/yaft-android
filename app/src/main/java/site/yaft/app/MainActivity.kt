@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -36,7 +37,10 @@ import site.yaft.app.data.SessionStore
 import site.yaft.app.record.Recorder
 import site.yaft.app.track.Category
 import site.yaft.app.ui.AccountScreen
+import kotlinx.coroutines.launch
 import site.yaft.app.ui.ReadyScreen
+import site.yaft.app.ui.RemoteSessionScreen
+import site.yaft.app.ui.mergeSessions
 import site.yaft.app.ui.RecordingScreen
 import site.yaft.app.ui.SessionScreen
 import site.yaft.app.ui.SessionsScreen
@@ -64,6 +68,8 @@ private fun App(app: YaftApp) {
     val finished by Recorder.finished.collectAsStateWithLifecycle()
     val sessions by SessionStore.sessions.collectAsStateWithLifecycle()
     val rider by app.account.rider.collectAsStateWithLifecycle()
+    val remote by app.remote.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     val permissions = buildList {
         add(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -94,19 +100,47 @@ private fun App(app: YaftApp) {
     }
 
     BackHandler(enabled = route != "ready") {
-        route = if (route.startsWith("session/")) "sessions" else "ready"
+        route = if (route.startsWith("session/") || route.startsWith("yaft/")) "sessions" else "ready"
     }
 
-    Box(Modifier.fillMaxSize().background(if (route == "ready" || route.startsWith("session/")) Yaft.hue(live?.category ?: currentCategory(route, category)) else Yaft.ground).safeDrawingPadding()) {
+    val ground = when {
+        live != null -> Yaft.hue(live!!.category)
+        route == "ready" || route.startsWith("session/") -> Yaft.hue(currentCategory(route, category))
+        route.startsWith("yaft/") -> remote.sessions.firstOrNull { it.id == route.removePrefix("yaft/") }?.let { Yaft.hue(it.category) } ?: Yaft.ground
+        else -> Yaft.ground
+    }
+    Box(Modifier.fillMaxSize().background(ground).safeDrawingPadding()) {
         val l = live
         when {
             l != null -> RecordingScreen(l, onStop = { Recorder.stop(context) })
-            route == "sessions" -> SessionsScreen(sessions, onOpen = { route = "session/$it" }, onBack = { route = "ready" })
+            route == "sessions" -> {
+                LaunchedEffect(rider) { if (rider != null) app.remote.refresh() }
+                SessionsScreen(
+                    entries = remember(sessions, remote.sessions) { mergeSessions(sessions, remote.sessions) },
+                    remote = remote,
+                    signedIn = rider != null,
+                    onRefresh = { scope.launch { app.remote.refresh() } },
+                    onLoadMore = { scope.launch { app.remote.loadMore() } },
+                    onOpen = { route = if (it.local != null) "session/${it.id}" else "yaft/${it.id}" },
+                    onSignIn = { route = "account" },
+                    onBack = { route = "ready" },
+                )
+            }
+            route.startsWith("yaft/") -> {
+                val s = remote.sessions.firstOrNull { it.id == route.removePrefix("yaft/") }
+                if (s == null) route = "sessions" else RemoteSessionScreen(s, app.account.siteUrl, onBack = { route = "sessions" })
+            }
             route == "account" -> AccountScreen(app.account, rider, onBack = { route = "ready" })
             route.startsWith("session/") -> {
                 val meta = sessions.firstOrNull { it.id == route.removePrefix("session/") }
                 if (meta == null) route = "sessions"
-                else SessionScreen(meta, app.account.siteUrl, rider != null, app.uploader, onBack = { route = "sessions" }, onSignIn = { route = "account" })
+                else SessionScreen(
+                    meta, app.account.siteUrl, rider != null, app.uploader,
+                    remote = remote.sessions.firstOrNull { it.id == meta.id },
+                    onUploaded = { scope.launch { app.remote.refresh() } },
+                    onBack = { route = "sessions" },
+                    onSignIn = { route = "account" },
+                )
             }
             else -> ReadyScreen(
                 category = category,

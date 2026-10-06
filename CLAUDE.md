@@ -13,6 +13,7 @@ The phone recorder for [yaft.site](https://yaft.site); the website lives in the 
 - `track/`: `Category` (keep it in step with the website's `lib/categories.ts`), `TrackPoint` and distance, `LiveStats` (the live numbers; the website does the real analysis), and `Gpx` (writes the format the website's `parseGpx` reads).
 - `record/`: `RecordingService` (foreground service, GPS at 1 Hz, appends every fix to disk, resumes after being killed) and `Recorder` (shared state).
 - `data/SessionStore`: sessions as `files/sessions/<id>.gpx` plus `.json`; recordings in progress in `files/recording/`.
+- `data/RemoteSessions`: the rider's yaft sessions (`GET /api/app/sessions`, paged, cached in `files/remote-sessions.json`), and marking phone sessions deleted on the website as not uploaded.
 - `net/`: `Account` (sign-in via the site's `/api/app/config`, then Supabase Auth), `Uploader` (storage upload, then `POST /api/app/sessions`) and `Http`.
 - `ui/`: Compose screens. The colours are the website's tokens (`Yaft` in `Theme.kt`): ink outlines, hard shadows, the category hue as the ground, text on white leaves only, tabular figures for numbers.
 
