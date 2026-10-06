@@ -1,0 +1,31 @@
+# Draft for a merge request to https://gitlab.com/fdroid/fdroiddata (metadata/site.yaft.app.yml).
+# Check it with `fdroid lint` and `fdroid build -v -l site.yaft.app` before submitting.
+Categories:
+  - Sports & Health
+License: GPL-3.0-only
+AuthorName: Claudio Brasser
+WebSite: https://yaft.site
+SourceCode: https://github.com/cbrasser/yaft-android
+IssueTracker: https://github.com/cbrasser/yaft-android/issues
+
+AutoName: yaft
+
+RepoType: git
+Repo: https://github.com/cbrasser/yaft-android.git
+
+AntiFeatures:
+  NonFreeNet:
+    en-US: Uploading sends sessions to yaft.site, whose server code isn't open source. Recording and the on-phone viewer work without it.
+
+Builds:
+  - versionName: 0.1.0
+    versionCode: 1
+    commit: v0.1.0
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 0.1.0
+CurrentVersionCode: 1

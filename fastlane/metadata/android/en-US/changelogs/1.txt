@@ -1,0 +1,1 @@
+First release: record sessions with the phone's GPS, see the track and basic numbers, upload to yaft.site or share the GPX.

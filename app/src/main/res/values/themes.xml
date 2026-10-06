@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Yaft" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/ground</item>
+    </style>
+    <color name="ground">#E6EAEF</color>
+    <color name="teal">#2EC4B6</color>
+</resources>

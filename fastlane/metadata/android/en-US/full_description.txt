@@ -1,0 +1,20 @@
+yaft (yet another foil tracker) records hydrofoil sessions with your phone's GPS: wingfoil, parawing, dockstart, SUP downwind and more.
+
+<b>On the water</b>
+<ul>
+<li>Pick what you're riding, start, and put the phone in a pouch. Recording keeps going with the screen off.</li>
+<li>Big numbers you can read at a glance: speed, time, time on foil, distance and top speed.</li>
+<li>Hold to stop, so a wet thumb can't end a session by accident.</li>
+<li>Every GPS fix is written to storage as it arrives, so a session survives the app being killed.</li>
+</ul>
+
+<b>After the session</b>
+<ul>
+<li>See your track and the basic numbers on the phone, offline.</li>
+<li>Upload to your yaft.site account for the full analysis: runs and flights, tacks and jibes, wind, upwind angles, downwind legs and personal bests.</li>
+<li>Or share the GPX file with any other app.</li>
+</ul>
+
+No Google Play Services, no ads, no analytics. Sessions stay on your phone until you upload them, and on yaft.site each session is private to you.
+
+Uploading needs a free account at yaft.site. The yaft.site server is not open source.
