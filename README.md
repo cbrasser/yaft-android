@@ -31,14 +31,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Debug builds allow plain HTTP to `127.0.0.1`, `localhost` and `10.0.2.2`. To try against a local yaft, run its dev server and local Supabase, then `adb reverse tcp:3000 tcp:3000` and `adb reverse tcp:55421 tcp:55421`, and in the app choose Account → Use another server → `http://127.0.0.1:3000`.
 
-### Release
+## Install
 
-- Bump `versionCode` and `versionName` in `app/build.gradle.kts`, add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, and tag `v<versionName>`. F-Droid picks up new tags.
-- For a signed APK on GitHub releases, create `keystore.properties` (gitignored) with `storeFile`, `storePassword`, `keyAlias` and `keyPassword`, then run `./gradlew assembleRelease`.
+- **GitHub Releases:** download `yaft-<version>.apk` from [Releases](https://github.com/cbrasser/yaft-android/releases), or add this repo to [Obtainium](https://github.com/ImranR98/Obtainium) for updates.
+- **F-Droid:** submission planned. F-Droid will carry the same signed APK (reproducible builds), with the `NonFreeNet` anti-feature, since the yaft.site server isn't open source.
 
-## F-Droid
+Releasing, signing and the F-Droid submission are in [RELEASING.md](RELEASING.md).
 
-The store listing is in `fastlane/metadata/android/`. A draft of the F-Droid build recipe is in [fdroid/site.yaft.app.yml](fdroid/site.yaft.app.yml); submit it as a merge request to [fdroiddata](https://gitlab.com/fdroid/fdroiddata). Expect the `NonFreeNet` anti-feature, since the yaft.site server isn't open source.
+## How it was made
+
+yaft for Android was written with Claude Code, an AI coding assistant, working with the maintainer.
 
 ## Licence
 

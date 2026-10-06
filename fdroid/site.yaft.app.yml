@@ -17,6 +17,10 @@ AntiFeatures:
   NonFreeNet:
     en-US: Uploading sends sessions to yaft.site, whose server code isn't open source. Recording and the on-phone viewer work without it.
 
+# Publish the developer-signed APK from GitHub Releases when F-Droid's rebuild matches it.
+Binaries: https://github.com/cbrasser/yaft-android/releases/download/v%v/yaft-%v.apk
+AllowedAPKSigningKeys: REPLACE_WITH_SHA256_OF_THE_SIGNING_CERTIFICATE
+
 Builds:
   - versionName: 0.1.0
     versionCode: 1
@@ -24,6 +28,11 @@ Builds:
     subdir: app
     gradle:
       - yes
+    # F-Droid's default JDK may differ from CI's; build with 21 like the release workflow.
+    sudo:
+      - apt-get update
+      - apt-get install -y openjdk-21-jdk-headless
+      - update-java-alternatives -a
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags

@@ -33,6 +33,8 @@ android {
     buildTypes {
         release {
             if (keystore != null) signingConfig = signingConfigs.getByName("release")
+            // Reproducible builds (F-Droid publishes our signed APK only if its rebuild matches).
+            vcsInfo.include = false
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -55,6 +57,9 @@ android {
         includeInBundle = false
     }
 }
+
+// Baseline profile generation isn't deterministic; skip it so rebuilds match byte for byte.
+tasks.matching { it.name.contains("ArtProfile") }.configureEach { enabled = false }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
