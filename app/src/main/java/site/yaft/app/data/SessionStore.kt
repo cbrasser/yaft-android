@@ -2,7 +2,9 @@ package site.yaft.app.data
 
 import android.content.Context
 import java.io.File
+import java.io.InputStream
 import java.util.TimeZone
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONObject
@@ -25,11 +27,14 @@ data class SessionMeta(
     val place: String = "",
     /** When it reached yaft.site; the session there has the same id. */
     val uploadedAt: Long? = null,
+    /** What recorded it, for a GPX taken in from another app; null for the phone's own recordings. */
+    val device: String? = null,
 ) {
     fun toJson(): JSONObject = JSONObject()
         .put("id", id).put("category", category.id).put("startedAt", startedAt).put("timeZone", timeZone)
         .put("durationS", durationS).put("distanceM", distanceM).put("foilTimeS", foilTimeS).put("top3Kmh", top3Kmh)
         .put("points", points).put("place", place).put("uploadedAt", uploadedAt ?: JSONObject.NULL)
+        .put("device", device ?: JSONObject.NULL)
 
     companion object {
         fun fromJson(j: JSONObject) = SessionMeta(
@@ -44,11 +49,12 @@ data class SessionMeta(
             points = j.optInt("points", 0),
             place = j.optString("place", ""),
             uploadedAt = if (j.isNull("uploadedAt")) null else j.optLong("uploadedAt"),
+            device = if (j.isNull("device")) null else j.optString("device"),
         )
 
-        fun of(id: String, category: Category, points: List<TrackPoint>, timeZone: String, place: String = "", uploadedAt: Long? = null): SessionMeta {
+        fun of(id: String, category: Category, points: List<TrackPoint>, timeZone: String, place: String = "", uploadedAt: Long? = null, device: String? = null): SessionMeta {
             val stats = LiveStats.of(points, category)
-            return SessionMeta(id, category, stats.startT, timeZone, stats.durationS, stats.distanceM, stats.foilTimeS, stats.top3Kmh, stats.points, place, uploadedAt)
+            return SessionMeta(id, category, stats.startT, timeZone, stats.durationS, stats.distanceM, stats.foilTimeS, stats.top3Kmh, stats.points, place, uploadedAt, device)
         }
     }
 }
@@ -99,7 +105,7 @@ object SessionStore {
     /** Changes the category; the on-foil numbers depend on it, so they're worked out again. */
     fun setCategory(id: String, category: Category) {
         val meta = get(id) ?: return
-        save(SessionMeta.of(id, category, loadPoints(id), meta.timeZone, meta.place, meta.uploadedAt))
+        save(SessionMeta.of(id, category, loadPoints(id), meta.timeZone, meta.place, meta.uploadedAt, meta.device))
     }
 
     @Synchronized
@@ -108,6 +114,42 @@ object SessionStore {
         metaFile(id).delete()
         reload()
     }
+
+    /**
+     * Takes in a GPX from another app (a watch's export, say) as a session. The
+     * file is kept as it came, so its heart rate and device name reach yaft.
+     * Returns the session it already is when the same track was taken in
+     * before, and null when there's no track in it.
+     */
+    @Synchronized
+    fun importGpx(input: InputStream, category: Category): SessionMeta? {
+        val id = UUID.randomUUID().toString()
+        val tmp = File(sessionsDir, "$id.gpx.tmp")
+        try {
+            tmp.outputStream().use { out ->
+                val buffer = ByteArray(64 * 1024)
+                var total = 0L
+                while (true) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    total += n
+                    if (total > MAX_IMPORT_BYTES) return null
+                    out.write(buffer, 0, n)
+                }
+            }
+            val points = runCatching { Gpx.read(tmp) }.getOrDefault(emptyList())
+            if (points.size < 2) return null
+            val meta = SessionMeta.of(id, category, points, TimeZone.getDefault().id, device = Gpx.creator(tmp) ?: "Imported")
+            _sessions.value.firstOrNull { it.device != null && it.startedAt == meta.startedAt && it.points == meta.points }?.let { return it }
+            if (!tmp.renameTo(gpxFile(id))) return null
+            return meta.also(::save)
+        } finally {
+            tmp.delete()
+        }
+    }
+
+    /** A day at 1 Hz with every extension is a few megabytes; anything near this isn't a session. */
+    private const val MAX_IMPORT_BYTES = 32L * 1024 * 1024
 
     // Recording in progress
 

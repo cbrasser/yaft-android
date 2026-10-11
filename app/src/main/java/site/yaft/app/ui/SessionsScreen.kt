@@ -88,7 +88,7 @@ private fun SessionRow(e: ListEntry, modifier: Modifier) {
     val label = when {
         l != null && l.uploadedAt == null -> "Not uploaded"
         r == null -> "On yaft"
-        l != null -> "Recorded here"
+        l != null -> l.device ?: "Recorded here"
         else -> r.device ?: "On yaft"
     }
     Leaf(modifier) {

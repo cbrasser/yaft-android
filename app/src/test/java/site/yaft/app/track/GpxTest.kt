@@ -30,4 +30,36 @@ class GpxTest {
         val back = Gpx.read(f)
         assertEquals(points.map { it.copy(accuracyM = null) }, back)
     }
+
+    @Test
+    fun readsAWatchExport() {
+        // The shape of the Amazfit Bip 6's export (Zepp): its own prefix for Garmin's extension, heart rate next to speed.
+        val f = File.createTempFile("zepp", ".gpx").apply { deleteOnExit() }
+        f.writeText(
+            """
+            <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+            <gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:ns3="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" creator="Amazfit Bip 6" version="1.1">
+            <trk><name><![CDATA[20261006 Outdoor running]]></name><trkseg>
+            <trkpt lat="46.96608566" lon="7.38494466"><time>2026-10-06T11:57:34Z</time>
+            <extensions><ns3:TrackPointExtension><ns3:speed>2.5</ns3:speed><ns3:cad>0.0</ns3:cad><ns3:hr>108</ns3:hr></ns3:TrackPointExtension></extensions></trkpt>
+            <trkpt lat="46.96608799" lon="7.38494932"><time>2026-10-06T11:57:35Z</time></trkpt>
+            </trkseg></trk></gpx>
+            """.trimIndent(),
+        )
+        assertEquals(
+            listOf(
+                TrackPoint(1_791_287_854_000, 46.96608566, 7.38494466, 2.5, null),
+                TrackPoint(1_791_287_855_000, 46.96608799, 7.38494932, null, null),
+            ),
+            Gpx.read(f),
+        )
+        assertEquals("Amazfit Bip 6", Gpx.creator(f))
+    }
+
+    @Test
+    fun aFileWithoutCreatorHasNone() {
+        val f = File.createTempFile("bare", ".gpx").apply { deleteOnExit() }
+        f.writeText("<gpx version=\"1.1\"><trk/></gpx>")
+        assertEquals(null, Gpx.creator(f))
+    }
 }

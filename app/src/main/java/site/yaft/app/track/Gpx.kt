@@ -32,9 +32,10 @@ object Gpx {
         out.write("</trkseg></trk>\n</gpx>\n")
     }
 
-    /** Reads a GPX this app wrote (or any GPX 1.1 track) back into points. */
+    /** Reads a GPX this app wrote, or any GPX 1.1 track (a watch's export), into points. */
     fun read(file: File): List<TrackPoint> {
-        val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true }
+        // Files from other apps come through here too, so entities stay as they are.
+        val factory = DocumentBuilderFactory.newInstance().apply { isNamespaceAware = true; isExpandEntityReferences = false }
         val doc = file.inputStream().use { factory.newDocumentBuilder().parse(it) }
         val nodes = doc.getElementsByTagNameNS("*", "trkpt")
         return (0 until nodes.length).mapNotNull { i ->
@@ -48,6 +49,13 @@ object Gpx {
                 accuracyM = null,
             )
         }
+    }
+
+    /** What wrote the file (a watch's name, say), from the gpx element's creator attribute. */
+    fun creator(file: File): String? {
+        val head = file.inputStream().use { input -> ByteArray(4096).let { String(it, 0, input.read(it).coerceAtLeast(0)) } }
+        return Regex("""<gpx\b[^>]*?\screator\s*=\s*(["'])(.*?)\1""", RegexOption.DOT_MATCHES_ALL).find(head)?.groupValues?.get(2)
+            ?.replace("&amp;", "&")?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun escape(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")

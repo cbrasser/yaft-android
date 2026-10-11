@@ -5,6 +5,7 @@ Record hydrofoil sessions with your phone's GPS and send them to [yaft.site](htt
 - **Record:** pick the category, start, and pocket the phone. A foreground service logs GPS at 1 Hz with the screen off. Every fix is appended to disk right away, so a killed app resumes the same session. Stopping takes a long press.
 - **View:** the track (on foil in ink, the rest grey) and the basic numbers, offline.
 - **Save:** sessions stay on the phone. Signed-in riders upload them to yaft.site, or anyone can share the GPX.
+- **From a watch:** share a GPX from the watch's app (Gadgetbridge, Zepp, a file manager) to yaft and it opens as a session: pick what you rode, then upload. The file goes up as it came, so the watch's heart rate and name reach yaft. Sharing the same track again opens the session it already is.
 - **History:** signed-in riders see all their yaft sessions next to the phone's (from `GET /api/app/sessions`, cached for offline use). A phone session deleted on the website goes back to "Not uploaded"; the phone keeps its copy.
 
 No Google Play Services, no trackers, no networking library: GPS comes from `LocationManager`, HTTP from `HttpURLConnection`.

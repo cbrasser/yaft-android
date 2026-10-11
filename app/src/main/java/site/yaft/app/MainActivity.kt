@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -37,7 +39,10 @@ import site.yaft.app.data.SessionStore
 import site.yaft.app.record.Recorder
 import site.yaft.app.track.Category
 import site.yaft.app.ui.AccountScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import site.yaft.app.ui.ReadyScreen
 import site.yaft.app.ui.RemoteSessionScreen
 import site.yaft.app.ui.mergeSessions
@@ -48,16 +53,32 @@ import site.yaft.app.ui.Yaft
 import site.yaft.app.ui.YaftTheme
 
 class MainActivity : ComponentActivity() {
+    /** A GPX another app shared or opened with yaft, until it's taken in. */
+    private val shared = MutableStateFlow<Uri?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { YaftTheme { App(application as YaftApp) } }
+        // Not again after a rotation: the file is a session by then.
+        if (savedInstanceState == null) shared.value = sharedGpx(intent)
+        setContent { YaftTheme { App(application as YaftApp, shared) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        sharedGpx(intent)?.let { shared.value = it }
+    }
+
+    private fun sharedGpx(intent: Intent?): Uri? = when (intent?.action) {
+        Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+        Intent.ACTION_VIEW -> intent.data
+        else -> null
     }
 }
 
 /** Screens are a route string: "ready", "sessions", "session/<id>" or "account". */
 @Composable
-private fun App(app: YaftApp) {
+private fun App(app: YaftApp, shared: MutableStateFlow<Uri?>) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("app", android.content.Context.MODE_PRIVATE) }
     var route by rememberSaveable { mutableStateOf("ready") }
@@ -91,6 +112,22 @@ private fun App(app: YaftApp) {
         // A recording left behind by a killed app picks up where it was.
         if (Recorder.live.value == null && SessionStore.unfinishedRecording() != null && hasLocation()) Recorder.resume(context)
         onPauseOrDispose {}
+    }
+    val sharedGpx by shared.collectAsStateWithLifecycle()
+    LaunchedEffect(sharedGpx) {
+        val uri = sharedGpx ?: return@LaunchedEffect
+        // It opens with the category chosen last; the session screen changes it before the upload.
+        val meta = withContext(Dispatchers.IO) {
+            runCatching { context.contentResolver.openInputStream(uri)?.use { SessionStore.importGpx(it, category) } }.getOrNull()
+        }
+        shared.value = null
+        if (meta != null) {
+            notice = null
+            route = "session/${meta.id}"
+        } else {
+            notice = "yaft couldn't read a track from that file. Share a GPX file, such as the one your watch's app exports."
+            route = "ready"
+        }
     }
     LaunchedEffect(finished) {
         finished?.let {
