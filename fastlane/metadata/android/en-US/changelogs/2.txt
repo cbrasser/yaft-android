@@ -1,0 +1,1 @@
+Sessions from a watch: share a GPX from the watch's app (Gadgetbridge, Zepp, a file manager) to yaft, pick what you rode and upload. The file goes up as it came, so the watch's heart rate and name reach yaft.
