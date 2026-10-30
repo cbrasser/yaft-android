@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -21,6 +22,23 @@ object Yaft {
     val mapWater = Color(0xFFD3E5EF)
     val danger = Color(0xFFC8262B)
     val dangerTint = Color(0xFFFFE3E1)
+
+    /** The speed and heart-rate ramp (--ramp-1 to --ramp-5), low to high; no red, which means crashes. */
+    val ramp = listOf(Color(0xFF5A48C8), Color(0xFF2F6FD6), Color(0xFF1FA59A), Color(0xFF7CCE4F), Color(0xFFFDE23A))
+
+    /** The colour for [value] on the ramp spread from [low] to [high]; values outside take the end stops (the website's rampColor). */
+    fun rampColor(low: Double, high: Double, value: Double): Color {
+        val t = ((value - low) / (high - low)).coerceIn(0.0, 1.0).toFloat() * (ramp.size - 1)
+        val k = minOf(ramp.size - 2, t.toInt())
+        val f = t - k
+        val a = ramp[k]
+        val b = ramp[k + 1]
+        // Mixed in sRGB, as the website and MapLibre's interpolate do.
+        return Color(a.red + (b.red - a.red) * f, a.green + (b.green - a.green) * f, a.blue + (b.blue - a.blue) * f)
+    }
+
+    /** --hue-wash: the category's hue at 14 % in white (mixed in Oklab, as the token is), for on-foil spans behind the chart. */
+    fun hueWash(c: Category): Color = lerp(paper, hue(c), 0.14f)
 
     fun hue(c: Category): Color = when (c) {
         Category.DOCKSTART -> Color(0xFFFF8A3D)

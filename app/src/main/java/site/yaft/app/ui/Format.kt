@@ -32,3 +32,6 @@ private val POINTS = listOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S
 fun compassPoint(deg: Double): String = POINTS[(((deg % 360 + 360) % 360) / 22.5).roundToInt() % 16]
 
 fun timeOfDay(epochMs: Long, zone: String): String = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).format(at(epochMs, zone))
+
+/** The time of day to the second, for reading a point on the chart. */
+fun timeOfDaySeconds(epochMs: Long, zone: String): String = DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM).format(at(epochMs, zone))
