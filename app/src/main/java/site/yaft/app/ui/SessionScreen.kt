@@ -72,7 +72,7 @@ fun SessionScreen(
     val uploaded = meta.uploadedAt != null
     val siteUrl = account.siteUrl
     // Once it's on yaft, the website's analysis replaces the phone's numbers.
-    val (load, retry) = rememberSessionView(account, meta.id, enabled = uploaded && signedIn)
+    val (load, retry, update) = rememberSessionView(account, meta.id, enabled = uploaded && signedIn)
 
     // Save the spot name as it's typed (it goes up with the session).
     LaunchedEffect(place) { if (place != meta.place) withContext(Dispatchers.IO) { SessionStore.save(meta.copy(place = place.take(80))) } }
@@ -96,14 +96,16 @@ fun SessionScreen(
     fun open(url: String) = context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
 
     val scroll = rememberScrollState()
-    Column(Modifier.fillMaxSize().background(Yaft.hue(meta.category))) {
-        TopBar(meta.category.label, onBack = onBack)
+    // Once it's on yaft, the category is the one saved there.
+    val category = (load as? ViewLoad.Ready)?.view?.category ?: meta.category
+    Column(Modifier.fillMaxSize().background(Yaft.hue(category))) {
+        TopBar(category.label, onBack = onBack)
         Column(
             Modifier.weight(1f).verticalScroll(scroll).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             val view = (load as? ViewLoad.Ready)?.view
-            if (view != null) FullSession(view, scroll)
+            if (view != null) FullSession(view, scroll, account, update)
             else {
                 if (uploaded && signedIn && load != ViewLoad.Unsupported) ViewProblem(load, retry, onSignIn)
                 Leaf(Modifier.fillMaxWidth(), padding = 0.dp) {
@@ -142,7 +144,7 @@ fun SessionScreen(
                     }
                     OutlinedTextField(place, { place = it.take(80) }, label = { Text("Spot (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 12.dp))
                 } else {
-                    Text("This session is on yaft. Change its category, wind and gear there.")
+                    Text(if (load is ViewLoad.Ready) "This session is on yaft. Change its gear there." else "This session is on yaft. Change its category, wind and gear there.")
                 }
                 Spacer(Modifier.height(16.dp))
                 when {

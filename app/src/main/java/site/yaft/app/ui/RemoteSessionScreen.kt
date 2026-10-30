@@ -30,22 +30,23 @@ import site.yaft.app.net.Account
 
 /**
  * A session that's on yaft but wasn't recorded on this phone: the website's
- * analysis, read-only. A server older than the view (API version 1) gets the
+ * analysis and the edit forms. A server older than the view (API version 1) gets the
  * summary from the list, and so does the screen while the view can't be loaded.
  */
 @Composable
 fun RemoteSessionScreen(s: RemoteSession, account: Account, onBack: () -> Unit, onSignIn: () -> Unit) {
     val context = LocalContext.current
-    val (load, retry) = rememberSessionView(account, s.id)
+    val (load, retry, update) = rememberSessionView(account, s.id)
     val scroll = rememberScrollState()
-    Column(Modifier.fillMaxSize().background(Yaft.hue(s.category))) {
-        TopBar(s.category.label, onBack = onBack)
+    val category = (load as? ViewLoad.Ready)?.view?.category ?: s.category
+    Column(Modifier.fillMaxSize().background(Yaft.hue(category))) {
+        TopBar(category.label, onBack = onBack)
         Column(
             Modifier.weight(1f).verticalScroll(scroll).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             when (load) {
-                is ViewLoad.Ready -> FullSession(load.view, scroll)
+                is ViewLoad.Ready -> FullSession(load.view, scroll, account, update)
                 ViewLoad.Unsupported -> Summary(s)
                 else -> {
                     ViewProblem(load, retry, onSignIn)

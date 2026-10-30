@@ -67,6 +67,11 @@ data class SessionView(
     val hasHeartRate: Boolean,
     val notes: String,
     val rating: Int?,
+    /** The wind direction the rider set (degrees it blows from); null when yaft estimates it. */
+    val savedWind: Int? = null,
+    /** The wind strength the rider logged, knots. */
+    val windBase: Int? = null,
+    val windGust: Int? = null,
 ) {
     companion object {
         /** The server API version that serves this view. */
@@ -115,6 +120,9 @@ data class SessionView(
                 hasHeartRate = !track.isNull("hr"),
                 notes = response.optString("notes"),
                 rating = if (response.isNull("rating")) null else response.optInt("rating"),
+                savedWind = s.num("savedWind")?.toInt(),
+                windBase = s.optJSONObject("details")?.num("windBase")?.toInt(),
+                windGust = s.optJSONObject("details")?.num("windGust")?.toInt(),
             )
         }
     }
