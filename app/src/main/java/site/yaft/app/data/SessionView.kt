@@ -67,6 +67,8 @@ data class SessionView(
     val hasHeartRate: Boolean,
     val notes: String,
     val rating: Int?,
+    /** Per point on foil, for up-down and downwind sessions: 1 up, 2 reach, 3 down, 4 turn, 0 none. */
+    val phase: List<Int>? = null,
     /** The wind direction the rider set (degrees it blows from); null when yaft estimates it. */
     val savedWind: Int? = null,
     /** The wind strength the rider logged, knots. */
@@ -120,6 +122,7 @@ data class SessionView(
                 hasHeartRate = !track.isNull("hr"),
                 notes = response.optString("notes"),
                 rating = if (response.isNull("rating")) null else response.optInt("rating"),
+                phase = track.optJSONArray("phase")?.let { p -> (0 until p.length()).map { p.optInt(it) } },
                 savedWind = s.num("savedWind")?.toInt(),
                 windBase = s.optJSONObject("details")?.num("windBase")?.toInt(),
                 windGust = s.optJSONObject("details")?.num("windGust")?.toInt(),

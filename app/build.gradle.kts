@@ -51,6 +51,14 @@ android {
         buildConfig = true
     }
 
+    // MapLibre's native library comes stripped from Maven Central. Packing it as it is, rather than stripping it
+    // again with whichever NDK the build machine has, keeps release builds the same everywhere.
+    packaging {
+        jniLibs.keepDebugSymbols += "**/libmaplibre.so"
+        // Compressed, the native libraries of the four ABIs add about 15 MB to the APK instead of 42 MB.
+        jniLibs.useLegacyPackaging = true
+    }
+
     // F-Droid: no Google dependency metadata blob in the APK.
     dependenciesInfo {
         includeInApk = false
@@ -70,6 +78,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.kotlinx.coroutines.android)
+    // The session view's map (BSD-2-Clause, no Play Services).
+    implementation(libs.maplibre.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     // Android's org.json is a stub in local unit tests; use the real one there.
