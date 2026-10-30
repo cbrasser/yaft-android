@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import site.yaft.app.data.ColorMode
 import site.yaft.app.data.SessionView
 import site.yaft.app.data.ViewLoad
 import site.yaft.app.data.loadSessionView
@@ -55,17 +56,30 @@ fun rememberSessionView(account: Account, id: String, enabled: Boolean = true): 
 }
 
 /**
- * A session as the website analyses it: the track, the numbers sheet and the
- * runs or flights, then the edit forms. Tapping a run highlights it on the
- * track and scrolls [scroll] back up to it. An edit hands the new view to [onEdited].
+ * A session as the website analyses it: the track with its colour switch and
+ * key, the speed and heart-rate chart, the numbers sheet and the runs or
+ * flights, then the edit forms. Tapping a run highlights it on the track,
+ * narrows the chart to it and scrolls [scroll] back up to it. Dragging along
+ * the chart moves a dot on the map. An edit hands the new view to [onEdited].
  */
 @Composable
 fun ColumnScope.FullSession(view: SessionView, scroll: ScrollState, account: Account, onEdited: (SessionView) -> Unit) {
     val scope = rememberCoroutineScope()
     var selected by rememberSaveable(view.id) { mutableStateOf<Int?>(null) }
     val run = view.runs.firstOrNull { it.number == selected }
+    var picked by rememberSaveable(view.id) { mutableStateOf(ColorMode.FOIL) }
+    // An edit can bring a view without the picked mode (a new server, or none): fall back to on foil.
+    val colorBy = picked.takeIf { it in view.colors.modes } ?: ColorMode.FOIL
+    var cursor by remember(view) { mutableStateOf<Int?>(null) }
     Leaf(Modifier.fillMaxWidth(), padding = 0.dp) {
-        TrackMap(view, run, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)))
+        TrackMap(view, run, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)), colorBy, cursor)
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ColorSwitch(view, colorBy, { picked = it })
+            MapKey(view, colorBy)
+        }
+    }
+    Leaf(Modifier.fillMaxWidth()) {
+        SessionChart(view, run?.points ?: view.lonLat.indices, cursor) { cursor = it }
     }
     Leaf(Modifier.fillMaxWidth()) {
         Text(dateTime(view.startedAt, view.timeZone) + (view.place?.let { " · $it" } ?: ""), fontWeight = FontWeight.Bold, style = Yaft.num)

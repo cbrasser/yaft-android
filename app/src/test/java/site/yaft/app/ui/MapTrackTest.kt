@@ -3,6 +3,7 @@ package site.yaft.app.ui
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import site.yaft.app.data.ColorMode
 import site.yaft.app.data.SessionView
 
 class MapTrackTest {
@@ -46,5 +47,30 @@ class MapTrackTest {
 
         val phone = view("session-view-phone.json")
         assertEquals(Bounds(9.509998, 40.911238, 9.511365, 40.91227), boundsOf(phone.lonLat, phone.runs[1].points))
+    }
+
+    // Speed and heart rate colour the on-foil track in short pieces, each carrying the mean of its points
+    // (property v), as the website's map does. Off foil stays in the dashed line, so the pieces cover the run only.
+    @Test
+    fun colorsTheRunByItsSpeed() {
+        val view = view("session-view-dockstart.json")
+        val pieces = features(rampTrack(view, ColorMode.SPEED))
+        // Each piece ends on the next one's first point, so together they run from point 61 to 120 without a gap.
+        assertEquals(120 - 61, pieces.sumOf { it.coordCount() - 1 })
+        assertEquals(true, pieces.all { it.coordCount() in 2..9 })
+        val first = pieces.first().getJSONObject("geometry").getJSONArray("coordinates").getJSONArray(0)
+        assertEquals(view.lonLat[61][0], first.getDouble(0), 1e-12)
+        // Points 61 and 62 run at 15.8 and 16.1 km/h.
+        assertEquals(15.95, pieces[0].getJSONObject("properties").getDouble("v"), 1e-9)
+        assertEquals(1, pieces[0].getJSONObject("properties").getInt("run"))
+        assertEquals(2, pieces[0].coordCount())
+    }
+
+    @Test
+    fun colorsByHeartRateOnlyWhereThereIsSome() {
+        val pieces = features(rampTrack(view("session-view-dockstart.json"), ColorMode.HR))
+        // Points 61 and 62: 106 and 107 bpm.
+        assertEquals(106.5, pieces[0].getJSONObject("properties").getDouble("v"), 1e-9)
+        assertEquals(0, features(rampTrack(view("session-view-phone.json"), ColorMode.HR)).size)
     }
 }
