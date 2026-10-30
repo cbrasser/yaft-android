@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -31,9 +32,18 @@ fun TrackCanvas(points: List<TrackPoint>, category: Category, modifier: Modifier
  * stretches in ink, the rest in grey, start as a dot. North is up.
  * [lonLat] holds [lon, lat] pairs, like the website's preview. With
  * [highlight], those points stand out in ink and the rest of the track fades to grey.
+ * [pointColor] colours the on-foil track point by point (speed or heart rate);
+ * [cursor] is the chart's point, drawn as a dot.
  */
 @Composable
-fun TrackCanvas(lonLat: List<DoubleArray>, onFoil: List<Boolean>, modifier: Modifier = Modifier, highlight: IntRange? = null) {
+fun TrackCanvas(
+    lonLat: List<DoubleArray>,
+    onFoil: List<Boolean>,
+    modifier: Modifier = Modifier,
+    highlight: IntRange? = null,
+    pointColor: ((Int) -> Color?)? = null,
+    cursor: Int? = null,
+) {
     Canvas(modifier) {
         drawRect(Yaft.mapWater)
         if (lonLat.size < 2) return@Canvas
@@ -66,6 +76,14 @@ fun TrackCanvas(lonLat: List<DoubleArray>, onFoil: List<Boolean>, modifier: Modi
             )
             i = j - 1
         }
+        // Speed or heart rate: each step within a stretch on foil in its end point's colour, the picked run on top.
+        if (pointColor != null) {
+            for (k in 1 until lonLat.size) {
+                if (!foil(k - 1) || !foil(k) || (highlight != null && k in highlight && k - 1 in highlight)) continue
+                val c = pointColor(k) ?: continue
+                drawLine(c, at(k - 1), at(k), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round, alpha = if (highlight == null) 1f else 0.6f)
+            }
+        }
         highlight?.let { range ->
             val first = range.first.coerceIn(0, lonLat.size - 1)
             val last = range.last.coerceIn(first, lonLat.size - 1)
@@ -74,9 +92,17 @@ fun TrackCanvas(lonLat: List<DoubleArray>, onFoil: List<Boolean>, modifier: Modi
                 for (k in first + 1..last) lineTo(at(k).x, at(k).y)
             }
             drawPath(path, Yaft.ink, style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            if (pointColor != null) for (k in first + 1..last) {
+                val c = pointColor(k) ?: continue
+                drawLine(c, at(k - 1), at(k), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
+            }
             drawCircle(Yaft.ink, radius = 5.dp.toPx(), center = at(first))
         }
         drawCircle(Yaft.ink, radius = 6.dp.toPx(), center = at(0))
         drawCircle(Yaft.paper, radius = 3.dp.toPx(), center = at(0))
+        cursor?.takeIf { it in lonLat.indices }?.let {
+            drawCircle(Yaft.paper, radius = 8.dp.toPx(), center = at(it))
+            drawCircle(Yaft.ink, radius = 6.dp.toPx(), center = at(it))
+        }
     }
 }

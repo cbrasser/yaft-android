@@ -57,6 +57,8 @@ import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.expressions.Expression.color
 import org.maplibre.android.style.expressions.Expression.eq
 import org.maplibre.android.style.expressions.Expression.get
+import org.maplibre.android.style.expressions.Expression.interpolate
+import org.maplibre.android.style.expressions.Expression.linear
 import org.maplibre.android.style.expressions.Expression.literal
 import org.maplibre.android.style.expressions.Expression.match
 import org.maplibre.android.style.expressions.Expression.stop
@@ -80,7 +82,10 @@ import org.maplibre.android.style.layers.PropertyFactory.visibility
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.android.tile.TileOperation
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.Point
+import site.yaft.app.data.ColorMode
 import site.yaft.app.data.Run
 import site.yaft.app.data.SessionView
 
@@ -93,15 +98,16 @@ private const val CREDIT_URL = "https://www.openstreetmap.org/copyright"
 
 /**
  * The session's track on a map, styled as on the website: on foil an
- * ink-cased line in the category's hue (or the phase colours), off foil
- * dashed ink, the start as a ring. With [highlight], that run stands out and
- * the map frames it. Two fingers move and zoom the map, so one still scrolls the screen.
+ * ink-cased line in the category's hue (or the phase colours), or along the
+ * speed or heart-rate ramp with [colorBy]; off foil dashed ink in every mode,
+ * the start as a ring, and the chart's [cursor] as a dot. With [highlight],
+ * that run stands out and the map frames it. Two fingers move and zoom the map, so one still scrolls the screen.
  * Without a connection, or when the map or its tiles don't load, it's the
  * [TrackCanvas] on its own; the canvas also shows while the map loads, and
  * the map tries again when the connection comes back.
  */
 @Composable
-fun TrackMap(view: SessionView, highlight: Run?, modifier: Modifier = Modifier) {
+fun TrackMap(view: SessionView, highlight: Run?, modifier: Modifier = Modifier, colorBy: ColorMode = ColorMode.FOIL, cursor: Int? = null) {
     val online = rememberOnline()
     var ready by remember(view) { mutableStateOf(false) }
     var failed by remember(view) { mutableStateOf(false) }
@@ -109,9 +115,18 @@ fun TrackMap(view: SessionView, highlight: Run?, modifier: Modifier = Modifier) 
     val tiled = view.lonLat.size >= 2 && !failed && (online || ready)
     Box(modifier.background(Yaft.mapWater)) {
         // A new view (another session, or this one loaded again) gets a new map.
-        if (tiled) key(view) { TiledTrack(view, highlight, onReady = { ready = true }, onFail = { failed = true; ready = false }) }
+        if (tiled) key(view) { TiledTrack(view, highlight, colorBy, cursor, onReady = { ready = true }, onFail = { failed = true; ready = false }) }
         if (!tiled || !ready) {
-            TrackCanvas(view.lonLat, view.onFoil, Modifier.fillMaxSize(), highlight = highlight?.points)
+            val ramp = view.colors.ramp(colorBy)
+            val values = if (ramp == null) null else rampValues(view, colorBy)
+            TrackCanvas(
+                view.lonLat,
+                view.onFoil,
+                Modifier.fillMaxSize(),
+                highlight = highlight?.points,
+                pointColor = if (ramp == null || values == null) null else { i -> values[i]?.let { Yaft.rampColor(ramp.low, ramp.high, it) } },
+                cursor = cursor,
+            )
             Chip(if (tiled) "Loading map…" else "No map tiles, so this is the track on its own.", Modifier.align(Alignment.BottomStart))
         } else {
             val uri = LocalUriHandler.current
@@ -138,7 +153,7 @@ private fun Chip(text: String, modifier: Modifier, onClick: (() -> Unit)? = null
 }
 
 @Composable
-private fun TiledTrack(view: SessionView, highlight: Run?, onReady: () -> Unit, onFail: () -> Unit) {
+private fun TiledTrack(view: SessionView, highlight: Run?, colorBy: ColorMode, cursor: Int?, onReady: () -> Unit, onFail: () -> Unit) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val track = remember { mapTrack(view) }
@@ -152,6 +167,8 @@ private fun TiledTrack(view: SessionView, highlight: Run?, onReady: () -> Unit, 
     val ready by rememberUpdatedState(onReady)
     val fail by rememberUpdatedState(onFail)
     val run by rememberUpdatedState(highlight)
+    val mode by rememberUpdatedState(colorBy)
+    val dot by rememberUpdatedState(cursor)
     fun MapLibreMap.show(run: Run?, animate: Boolean) {
         style?.fade(run?.number)
         val bounds = run?.let { boundsOf(view.lonLat, it.points) } ?: track.bounds
@@ -185,6 +202,8 @@ private fun TiledTrack(view: SessionView, highlight: Run?, onReady: () -> Unit, 
             m.setStyle(Style.Builder().fromUri(STYLE_URL)) { style ->
                 quietBasemap(style)
                 addTrack(style, track, view)
+                style.colorBy(mode)
+                style.cursor(view, dot)
                 m.show(run, animate = false)
                 map = m
             }
@@ -197,6 +216,9 @@ private fun TiledTrack(view: SessionView, highlight: Run?, onReady: () -> Unit, 
     LaunchedEffect(highlight) {
         if (first) first = false else map?.show(highlight, animate = !reducedMotion(context))
     }
+
+    LaunchedEffect(colorBy, map) { map?.style?.colorBy(colorBy) }
+    LaunchedEffect(cursor, map) { map?.style?.cursor(view, cursor) }
 
     AndroidView({ mapView }, Modifier.fillMaxSize())
     // As on the website: one finger scrolls the screen, two move and zoom the map.
@@ -291,14 +313,42 @@ private fun addTrack(style: Style, track: MapTrack, view: SessionView) {
             lineWidth(4f),
         ),
     )
+    // Speed and heart rate along the ramp, as the website's rampExpression; shown by colorBy.
+    for (ramp in view.colors.ramps) {
+        val id = ramp.mode.id
+        style.addSource(GeoJsonSource("foil-$id", rampTrack(view, ramp.mode)))
+        val stops = Yaft.ramp.mapIndexed { k, c -> stop(ramp.low + (ramp.high - ramp.low) * k / (Yaft.ramp.size - 1), color(c.toArgb())) }
+        style.addLayer(
+            LineLayer(ramp.mode.layer, "foil-$id").withProperties(
+                *round,
+                lineColor(interpolate(linear(), get("v"), *stops.toTypedArray())),
+                lineWidth(4f),
+                visibility(Property.NONE),
+            ),
+        )
+    }
     if (view.lonLat.isNotEmpty()) style.addLayer(CircleLayer("track-start", "start").withProperties(circleRadius(7f), circleColor(paper), circleStrokeColor(ink), circleStrokeWidth(3f)))
+    style.addSource(GeoJsonSource("cursor", FeatureCollection.fromFeatures(emptyList())))
+    style.addLayer(CircleLayer("track-cursor", "cursor").withProperties(circleRadius(7f), circleColor(ink), circleStrokeColor(paper), circleStrokeWidth(3f)))
+}
+
+/** Shows the on-foil track in [mode]'s colours; the casing and the dashed off-foil line stay. */
+private fun Style.colorBy(mode: ColorMode) {
+    for (m in ColorMode.entries) getLayer(m.layer)?.setProperties(visibility(if (m == mode) Property.VISIBLE else Property.NONE))
+}
+
+/** The chart's point as a dot on the track, or none. */
+private fun Style.cursor(view: SessionView, i: Int?) {
+    val c = i?.let { view.lonLat.getOrNull(it) }
+    val features = c?.let { listOf(Feature.fromGeometry(Point.fromLngLat(it[0], it[1]))) }.orEmpty()
+    getSourceAs<GeoJsonSource>("cursor")?.setGeoJson(FeatureCollection.fromFeatures(features))
 }
 
 /** With [run], fades everything but that run, as the website does. */
 private fun Style.fade(run: Int?) {
     fun opacity(full: Float, faded: Float): Expression =
         if (run == null) literal(full) else switchCase(eq(get("run"), literal(run)), literal(full), literal(faded))
-    getLayer("track-foil")?.setProperties(lineOpacity(opacity(1f, 0.25f)))
+    for (m in ColorMode.entries) getLayer(m.layer)?.setProperties(lineOpacity(opacity(1f, 0.25f)))
     getLayer("track-casing")?.setProperties(lineOpacity(opacity(1f, 0.25f)))
     getLayer("track-off")?.setProperties(lineOpacity(opacity(0.55f, 0.15f)))
 }

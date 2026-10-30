@@ -78,6 +78,12 @@ data class SessionView(
     /** The wind strength the rider logged, knots. */
     val windBase: Int? = null,
     val windGust: Int? = null,
+    /** Each colour mode's range and whether heart rate is available; on foil only from an older server. */
+    val colors: ColorKey = ColorKey.NONE,
+    /** Per point: seconds since the first, speed in km/h and heart rate in bpm (0 where the watch logged none; null without any). */
+    val seconds: List<Int> = emptyList(),
+    val speed: List<Double> = emptyList(),
+    val hr: List<Int>? = null,
 ) {
     /** Split into parts on the website: the gear is on the parts, so the app shows it read-only. */
     val split: Boolean get() = parts.isNotEmpty()
@@ -135,6 +141,10 @@ data class SessionView(
                 savedWind = s.num("savedWind")?.toInt(),
                 windBase = s.optJSONObject("details")?.num("windBase")?.toInt(),
                 windGust = s.optJSONObject("details")?.num("windGust")?.toInt(),
+                colors = ColorKey.fromJson(response.optJSONObject("colors")),
+                seconds = track.optJSONArray("t")?.let { t -> (0 until t.length()).map { t.optInt(it) } }.orEmpty(),
+                speed = track.optJSONArray("speed")?.let { v -> (0 until v.length()).map { v.optDouble(it, 0.0) } }.orEmpty(),
+                hr = track.optJSONArray("hr")?.let { h -> (0 until h.length()).map { h.optInt(it) } },
             )
         }
     }
