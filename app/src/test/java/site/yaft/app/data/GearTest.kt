@@ -48,7 +48,9 @@ class GearTest {
         val response = recorded("session-view-phone.json")
         val plain = SessionView.fromJson(response)
         assertFalse(plain.split)
-        assertEquals(mapOf("board_id" to null, "frontwing_id" to null, "stab_id" to null, "wing_id" to null), plain.gear)
+        // Recorded with Kode 85 and Strike 5 picked.
+        assertEquals(mapOf("board_id" to kode, "frontwing_id" to null, "stab_id" to null, "wing_id" to "34c43443-7019-401b-bb6a-575201d3db70"), plain.gear)
+        assertEquals("Strike 5", gear.name(plain.gear["wing_id"]))
 
         response.getJSONObject("session").put(
             "details",
