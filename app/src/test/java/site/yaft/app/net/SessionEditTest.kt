@@ -25,8 +25,11 @@ class SessionEditTest {
     }
 
     @Test
-    fun aWindEditForACategoryWithoutWindStrengthSendsOnlyTheDirection() {
+    fun aWindEditSendsOnlyWhatChanged() {
+        // A category without wind strength, or only the direction changed.
         assertJson("""{"windFrom":90}""", SessionEdit.Wind("90", null, null).toJson())
+        // Only the strength changed: the direction isn't sent, so yaft keeps it and the analysis.
+        assertJson("""{"windBase":12,"windGust":null}""", SessionEdit.Wind(null, "12", "").toJson())
     }
 
     @Test

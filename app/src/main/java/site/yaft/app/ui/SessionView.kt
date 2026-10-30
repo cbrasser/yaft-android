@@ -56,12 +56,11 @@ fun rememberSessionView(account: Account, id: String, enabled: Boolean = true): 
 
 /**
  * A session as the website analyses it: the track, the numbers sheet and the
- * runs or flights. Tapping a run highlights it on the track and scrolls
- * [scroll] back up to it. With an [account], the edit forms follow and an edit
- * hands the new view to [onEdited]; without, the notes are read-only.
+ * runs or flights, then the edit forms. Tapping a run highlights it on the
+ * track and scrolls [scroll] back up to it. An edit hands the new view to [onEdited].
  */
 @Composable
-fun ColumnScope.FullSession(view: SessionView, scroll: ScrollState, account: Account? = null, onEdited: (SessionView) -> Unit = {}) {
+fun ColumnScope.FullSession(view: SessionView, scroll: ScrollState, account: Account, onEdited: (SessionView) -> Unit) {
     val scope = rememberCoroutineScope()
     var selected by rememberSaveable(view.id) { mutableStateOf<Int?>(null) }
     val run = view.runs.firstOrNull { it.number == selected }
@@ -79,14 +78,7 @@ fun ColumnScope.FullSession(view: SessionView, scroll: ScrollState, account: Acc
         selected = if (selected == it) null else it
         if (selected != null) scope.launch { scroll.animateScrollTo(0) }
     }
-    if (account != null) EditForms(view, account, onEdited)
-    else if (view.notes.isNotBlank() || view.rating != null) {
-        Leaf(Modifier.fillMaxWidth()) {
-            SheetTitle("Notes")
-            view.rating?.coerceIn(0, 5)?.let { r -> Text("★".repeat(r) + "☆".repeat(5 - r), fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp)) }
-            if (view.notes.isNotBlank()) Text(view.notes)
-        }
-    }
+    EditForms(view, account, onEdited)
 }
 
 @Composable

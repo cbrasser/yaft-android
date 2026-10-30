@@ -22,12 +22,12 @@ sealed interface SessionEdit {
 
     /**
      * Where the wind came from (degrees; empty: yaft estimates it) and its
-     * strength in knots, base and gusts. The strength is null for categories
-     * without it, and then isn't sent.
+     * strength in knots, base and gusts. Null isn't sent: the direction when
+     * it didn't change, the strength when it didn't or the category has none.
      */
-    data class Wind(val fromDeg: String, val base: String?, val gust: String?) : SessionEdit {
+    data class Wind(val fromDeg: String?, val base: String?, val gust: String?) : SessionEdit {
         override fun toJson(): JSONObject = JSONObject().apply {
-            put("windFrom", typed(fromDeg))
+            if (fromDeg != null) put("windFrom", typed(fromDeg))
             if (base != null || gust != null) {
                 put("windBase", typed(base.orEmpty()))
                 put("windGust", typed(gust.orEmpty()))

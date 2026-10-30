@@ -50,7 +50,7 @@ fun EditForms(view: SessionView, account: Account, onSaved: (SessionView) -> Uni
 
 @Composable
 private fun CategoryForm(view: SessionView, account: Account, onSaved: (SessionView) -> Unit) {
-    var picked by remember(view) { mutableStateOf(view.category) }
+    var picked by remember(view.category) { mutableStateOf(view.category) }
     var menu by remember { mutableStateOf(false) }
     Form("What you rode", view, account, onSaved, changed = picked != view.category, edit = { SessionEdit.Ridden(picked) }) {
         Text("yaft redoes the analysis for it.", color = Yaft.ink2, fontSize = 14.sp)
@@ -70,12 +70,18 @@ private val COMPASS = listOf("N" to 0, "NE" to 45, "E" to 90, "SE" to 135, "S" t
 @Composable
 private fun WindForm(view: SessionView, account: Account, onSaved: (SessionView) -> Unit) {
     val strength = view.category.windPowered
-    var from by remember(view) { mutableStateOf(view.savedWind?.toString().orEmpty()) }
-    var base by remember(view) { mutableStateOf(view.windBase?.toString().orEmpty()) }
-    var gust by remember(view) { mutableStateOf(view.windGust?.toString().orEmpty()) }
-    val changed = from.trim() != view.savedWind?.toString().orEmpty() ||
-        strength && (base.trim() != view.windBase?.toString().orEmpty() || gust.trim() != view.windGust?.toString().orEmpty())
-    Form("Wind", view, account, onSaved, changed, edit = { SessionEdit.Wind(from, base.takeIf { strength }, gust.takeIf { strength }) }) {
+    val savedFrom = view.savedWind?.toString().orEmpty()
+    val savedBase = view.windBase?.toString().orEmpty()
+    val savedGust = view.windGust?.toString().orEmpty()
+    // Keyed on the saved values, so saving another form keeps what's typed here.
+    var from by remember(savedFrom) { mutableStateOf(savedFrom) }
+    var base by remember(savedBase) { mutableStateOf(savedBase) }
+    var gust by remember(savedGust) { mutableStateOf(savedGust) }
+    val fromChanged = from.trim() != savedFrom
+    val strengthChanged = strength && (base.trim() != savedBase || gust.trim() != savedGust)
+    // Only what changed goes: a new direction redoes the analysis, the strength alone doesn't need to.
+    val edit = { SessionEdit.Wind(from.takeIf { fromChanged }, base.takeIf { strengthChanged }, gust.takeIf { strengthChanged }) }
+    Form("Wind", view, account, onSaved, changed = fromChanged || strengthChanged, edit = edit) {
         Text("Where it blew from. Leave it empty and yaft estimates it.", color = Yaft.ink2, fontSize = 14.sp)
         OutlinedTextField(
             from, { from = it.take(5) }, label = { Text("From (degrees)") }, singleLine = true,
@@ -115,8 +121,8 @@ private fun WindForm(view: SessionView, account: Account, onSaved: (SessionView)
 
 @Composable
 private fun NotesForm(view: SessionView, account: Account, onSaved: (SessionView) -> Unit) {
-    var notes by remember(view) { mutableStateOf(view.notes) }
-    var rating by remember(view) { mutableStateOf(view.rating) }
+    var notes by remember(view.notes) { mutableStateOf(view.notes) }
+    var rating by remember(view.rating) { mutableStateOf(view.rating) }
     Form("Notes", view, account, onSaved, changed = notes.trim() != view.notes || rating != view.rating, edit = { SessionEdit.Notes(notes, rating) }) {
         Text("Only you see these.", color = Yaft.ink2, fontSize = 14.sp)
         Row(Modifier.padding(top = 4.dp)) {

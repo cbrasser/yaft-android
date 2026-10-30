@@ -105,7 +105,11 @@ fun SessionScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             val view = (load as? ViewLoad.Ready)?.view
-            if (view != null) FullSession(view, scroll, account, update)
+            if (view != null) FullSession(view, scroll, account) { edited ->
+                update(edited)
+                // Keep the phone's copy in step, for the list.
+                if (edited.category != meta.category) scope.launch(Dispatchers.IO) { SessionStore.setCategory(meta.id, edited.category) }
+            }
             else {
                 if (uploaded && signedIn && load != ViewLoad.Unsupported) ViewProblem(load, retry, onSignIn)
                 Leaf(Modifier.fillMaxWidth(), padding = 0.dp) {
