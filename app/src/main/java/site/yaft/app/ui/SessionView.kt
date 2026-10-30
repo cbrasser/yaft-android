@@ -59,7 +59,7 @@ fun ColumnScope.FullSession(view: SessionView, scroll: ScrollState) {
     var selected by rememberSaveable(view.id) { mutableStateOf<Int?>(null) }
     val run = view.runs.firstOrNull { it.number == selected }
     Leaf(Modifier.fillMaxWidth(), padding = 0.dp) {
-        TrackCanvas(view.lonLat, view.onFoil, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)), highlight = run?.points)
+        TrackMap(view, run, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)))
     }
     Leaf(Modifier.fillMaxWidth()) {
         Text(dateTime(view.startedAt, view.timeZone) + (view.place?.let { " · $it" } ?: ""), fontWeight = FontWeight.Bold, style = Yaft.num)
