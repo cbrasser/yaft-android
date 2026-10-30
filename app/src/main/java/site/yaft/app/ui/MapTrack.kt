@@ -77,8 +77,8 @@ fun rampTrack(view: SessionView, mode: ColorMode): String {
             if (i > points.last || bucket(i) != bucket(a) || i - a >= 8) {
                 val end = minOf(i, points.last)
                 if (end > a) {
-                    val values = (a..end).mapNotNull(value)
-                    if (values.isNotEmpty()) out += line(coords.subList(a, end + 1), "\"run\":${run.number},\"v\":${values.average()}")
+                    val piece = (a..end).mapNotNull(value)
+                    if (piece.isNotEmpty()) out += line(coords.subList(a, end + 1), "\"run\":${run.number},\"v\":${piece.average()}")
                 }
                 a = end
             }

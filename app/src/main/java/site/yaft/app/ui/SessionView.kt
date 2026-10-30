@@ -70,7 +70,8 @@ fun ColumnScope.FullSession(view: SessionView, scroll: ScrollState, account: Acc
     var picked by rememberSaveable(view.id) { mutableStateOf(ColorMode.FOIL) }
     // An edit can bring a view without the picked mode (a new server, or none): fall back to on foil.
     val colorBy = picked.takeIf { it in view.colors.modes } ?: ColorMode.FOIL
-    var cursor by remember(view) { mutableStateOf<Int?>(null) }
+    // The chart's point; picking another run starts afresh, so the dot never sits outside the chart.
+    var cursor by remember(view, selected) { mutableStateOf<Int?>(null) }
     Leaf(Modifier.fillMaxWidth(), padding = 0.dp) {
         TrackMap(view, run, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)), colorBy, cursor)
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

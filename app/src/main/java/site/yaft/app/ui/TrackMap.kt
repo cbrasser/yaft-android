@@ -319,7 +319,7 @@ private fun addTrack(style: Style, track: MapTrack, view: SessionView) {
         style.addSource(GeoJsonSource("foil-$id", rampTrack(view, ramp.mode)))
         val stops = Yaft.ramp.mapIndexed { k, c -> stop(ramp.low + (ramp.high - ramp.low) * k / (Yaft.ramp.size - 1), color(c.toArgb())) }
         style.addLayer(
-            LineLayer("track-$id", "foil-$id").withProperties(
+            LineLayer(ramp.mode.layer, "foil-$id").withProperties(
                 *round,
                 lineColor(interpolate(linear(), get("v"), *stops.toTypedArray())),
                 lineWidth(4f),
@@ -334,10 +334,7 @@ private fun addTrack(style: Style, track: MapTrack, view: SessionView) {
 
 /** Shows the on-foil track in [mode]'s colours; the casing and the dashed off-foil line stay. */
 private fun Style.colorBy(mode: ColorMode) {
-    for (m in ColorMode.entries) {
-        val layer = if (m == ColorMode.FOIL) "track-foil" else "track-${m.id}"
-        getLayer(layer)?.setProperties(visibility(if (m == mode) Property.VISIBLE else Property.NONE))
-    }
+    for (m in ColorMode.entries) getLayer(m.layer)?.setProperties(visibility(if (m == mode) Property.VISIBLE else Property.NONE))
 }
 
 /** The chart's point as a dot on the track, or none. */
@@ -351,7 +348,7 @@ private fun Style.cursor(view: SessionView, i: Int?) {
 private fun Style.fade(run: Int?) {
     fun opacity(full: Float, faded: Float): Expression =
         if (run == null) literal(full) else switchCase(eq(get("run"), literal(run)), literal(full), literal(faded))
-    for (layer in listOf("track-foil", "track-speed", "track-hr")) getLayer(layer)?.setProperties(lineOpacity(opacity(1f, 0.25f)))
+    for (m in ColorMode.entries) getLayer(m.layer)?.setProperties(lineOpacity(opacity(1f, 0.25f)))
     getLayer("track-casing")?.setProperties(lineOpacity(opacity(1f, 0.25f)))
     getLayer("track-off")?.setProperties(lineOpacity(opacity(0.55f, 0.15f)))
 }

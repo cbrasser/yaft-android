@@ -6,7 +6,10 @@ import org.json.JSONObject
 enum class ColorMode(val id: String, val label: String) {
     FOIL("phase", "On foil"),
     SPEED("speed", "Speed"),
-    HR("hr", "Heart rate"),
+    HR("hr", "Heart rate");
+
+    /** The map layer that draws the on-foil track in this mode. */
+    val layer: String get() = if (this == FOIL) "track-foil" else "track-$id"
 }
 
 /** The span a mode's ramp covers, low to high, in [unit] (km/h or bpm). */

@@ -76,12 +76,12 @@ fun TrackCanvas(
             )
             i = j - 1
         }
-        // Speed or heart rate: each on-foil step in its point's colour, over the ink line.
-        if (pointColor != null && highlight == null) {
+        // Speed or heart rate: each step within a stretch on foil in its end point's colour, the picked run on top.
+        if (pointColor != null) {
             for (k in 1 until lonLat.size) {
-                if (!foil(k)) continue
+                if (!foil(k - 1) || !foil(k) || (highlight != null && k in highlight && k - 1 in highlight)) continue
                 val c = pointColor(k) ?: continue
-                drawLine(c, at(k - 1), at(k), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
+                drawLine(c, at(k - 1), at(k), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round, alpha = if (highlight == null) 1f else 0.6f)
             }
         }
         highlight?.let { range ->
@@ -92,6 +92,10 @@ fun TrackCanvas(
                 for (k in first + 1..last) lineTo(at(k).x, at(k).y)
             }
             drawPath(path, Yaft.ink, style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            if (pointColor != null) for (k in first + 1..last) {
+                val c = pointColor(k) ?: continue
+                drawLine(c, at(k - 1), at(k), strokeWidth = 3.dp.toPx(), cap = StrokeCap.Round)
+            }
             drawCircle(Yaft.ink, radius = 5.dp.toPx(), center = at(first))
         }
         drawCircle(Yaft.ink, radius = 6.dp.toPx(), center = at(0))

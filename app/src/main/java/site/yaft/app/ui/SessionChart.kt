@@ -32,7 +32,9 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.text.font.FontWeight
@@ -72,6 +74,8 @@ fun ColumnScope.SessionChart(view: SessionView, points: IntRange, cursor: Int?, 
     val cur = cursor?.takeIf { it in points }
     val pick by rememberUpdatedState(onCursor)
     val wash = Yaft.hueWash(view.category)
+    // The point under x on a chart [width] wide.
+    fun at(x: Float, width: Int) = indexAt(seconds, seconds[i0] + (x / width).coerceIn(0f, 1f).toDouble() * (seconds[i1] - seconds[i0]), i0, i1)
 
     Text("Speed", style = Yaft.display, fontSize = 22.sp)
     Readout(view, cur, hr)
@@ -86,20 +90,17 @@ fun ColumnScope.SessionChart(view: SessionView, points: IntRange, cursor: Int?, 
             .border(2.dp, Yaft.ink, boxShape)
             .semantics {
                 contentDescription = "Speed over time. Drag along it to read a moment and see it on the map."
+                progressBarRangeInfo = ProgressBarRangeInfo((cur ?: i0).toFloat(), i0.toFloat()..i1.toFloat())
                 setProgress("Move along the track") { v ->
-                    pick((i0 + (v * (i1 - i0)).roundToInt()).coerceIn(i0, i1))
+                    pick(v.roundToInt().coerceIn(i0, i1))
                     true
                 }
             }
+            .pointerInput(view, points) { detectTapGestures { pick(at(it.x, size.width)) } }
             .pointerInput(view, points) {
-                fun at(x: Float) = pick(indexAt(seconds, seconds[i0] + (x / size.width).coerceIn(0f, 1f).toDouble() * (seconds[i1] - seconds[i0]), i0, i1))
-                detectTapGestures { at(it.x) }
-            }
-            .pointerInput(view, points) {
-                fun at(x: Float) = pick(indexAt(seconds, seconds[i0] + (x / size.width).coerceIn(0f, 1f).toDouble() * (seconds[i1] - seconds[i0]), i0, i1))
-                detectHorizontalDragGestures(onDragStart = { at(it.x) }) { change, _ ->
+                detectHorizontalDragGestures(onDragStart = { pick(at(it.x, size.width)) }) { change, _ ->
                     change.consume()
-                    at(change.position.x)
+                    pick(at(change.position.x, size.width))
                 }
             },
     ) {
@@ -111,12 +112,12 @@ fun ColumnScope.SessionChart(view: SessionView, points: IntRange, cursor: Int?, 
 
         for ((a, b) in shape.foil) drawRect(wash, Offset(x(a), 0f), Size((x(b) - x(a)).coerceAtLeast(1f), h))
         drawLine(Yaft.ink3, Offset(0f, y(threshold)), Offset(w, y(threshold)), strokeWidth = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())))
-        shape.hrRange?.let { (lo, hi) ->
+        if (hr != null) shape.hrRange?.let { (lo, hi) ->
             val hy = { v: Int -> h - 6.dp.toPx() - (v - lo).toFloat() / (hi - lo) * (h - 16.dp.toPx()) }
             val path = Path()
             var pen = false
             for (i in i0..i1) {
-                val v = hr!![i]
+                val v = hr[i]
                 if (v <= 0) { pen = false; continue }
                 if (pen) path.lineTo(x(i), hy(v)) else path.moveTo(x(i), hy(v))
                 pen = true
@@ -190,14 +191,6 @@ private fun ChartKey(view: SessionView, shape: ChartShape, wash: Color, threshol
                 drawLine(Yaft.ink3, Offset(0f, center.y), Offset(size.width, center.y), 1.5.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())))
             }
         }
-    }
-}
-
-@Composable
-private fun KeyItem(text: String, swatch: @Composable () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        swatch()
-        Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, style = Yaft.num)
     }
 }
 

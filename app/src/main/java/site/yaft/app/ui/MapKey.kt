@@ -111,8 +111,9 @@ fun MapKey(view: SessionView, colorBy: ColorMode, modifier: Modifier = Modifier)
     }
 }
 
+/** A key entry: its swatch, then what it means. The map's key and the chart's share it. */
 @Composable
-private fun KeyItem(text: String, swatch: @Composable () -> Unit) {
+fun KeyItem(text: String, swatch: @Composable () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         swatch()
         KeyText(text)
