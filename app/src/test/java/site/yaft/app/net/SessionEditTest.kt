@@ -38,6 +38,21 @@ class SessionEditTest {
         assertJson("""{"notes":"","rating":null}""", SessionEdit.Notes("", null).toJson())
     }
 
+    @Test
+    fun aGearEditSendsEachSlotWithNoneAsNull() {
+        assertJson(
+            """{"gear":{"board_id":"3f944d6a-0dd8-4b12-b57b-336626a9c6e0","wing_id":null}}""",
+            SessionEdit.Gear(mapOf("board_id" to "3f944d6a-0dd8-4b12-b57b-336626a9c6e0", "wing_id" to null)).toJson(),
+        )
+    }
+
+    // Gear on a split session, or gear that's gone: the website refuses it with its own message.
+    @Test
+    fun refusedGearSaysWhy() {
+        val split = "This session is split into parts, each with its own gear. Change the gear on yaft."
+        assertEquals(EditResult.Invalid(split), editResult(409, """{"error":"$split"}"""))
+    }
+
     private fun recorded(name: String) = javaClass.getResource("/$name")!!.readText()
 
     // PATCH /api/app/sessions/<id> on the phone recording of session-view-phone.json, uploaded to a local yaft:

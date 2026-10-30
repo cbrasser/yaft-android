@@ -35,6 +35,14 @@ sealed interface SessionEdit {
         }
     }
 
+    /**
+     * Gear ids per slot column (board_id…); null is none. A slot left out stays
+     * as it is. yaft refuses gear on a split session, whose gear is on its parts.
+     */
+    data class Gear(val picks: Map<String, String?>) : SessionEdit {
+        override fun toJson(): JSONObject = JSONObject().put("gear", JSONObject().apply { picks.forEach { (slot, id) -> put(slot, id ?: JSONObject.NULL) } })
+    }
+
     /** The rider's own notes and rating (1 to 5, or none); only they see them. */
     data class Notes(val notes: String, val rating: Int?) : SessionEdit {
         override fun toJson(): JSONObject = JSONObject().put("notes", notes).put("rating", rating ?: JSONObject.NULL)
@@ -73,7 +81,8 @@ fun editResult(status: Int, body: String): EditResult {
         status == 401 -> EditResult.SignedOut
         status == 404 -> EditResult.Gone
         status == 405 -> EditResult.Failed(EditResult.OLD_SERVER)
-        status == 400 && error.isNotEmpty() -> EditResult.Invalid(error)
+        // 409: gear on a split session, or gear that's no longer the rider's.
+        status in setOf(400, 409) && error.isNotEmpty() -> EditResult.Invalid(error)
         status !in 200..299 -> EditResult.Failed(error.ifEmpty { EditResult.TRY_AGAIN })
         else -> runCatching { EditResult.Saved(SessionView.fromJson(json)) }.getOrDefault(EditResult.Failed(EditResult.UNEXPECTED))
     }

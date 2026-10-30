@@ -1,9 +1,11 @@
 package site.yaft.app.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,21 +17,29 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import kotlinx.coroutines.launch
+import site.yaft.app.data.GearList
+import site.yaft.app.data.GearLoad
+import site.yaft.app.data.GearSlot
 import site.yaft.app.data.SessionView
+import site.yaft.app.data.loadGear
 import site.yaft.app.net.Account
 import site.yaft.app.net.EditResult
 import site.yaft.app.net.SessionEdit
@@ -37,13 +47,14 @@ import site.yaft.app.net.saveSessionEdit
 import site.yaft.app.track.Category
 
 /**
- * The forms for a session on yaft: what the rider rode, the wind, and their
- * notes and rating. Each saves on its own, needs a connection, and hands the
- * view the website sends back to [onSaved]. Gear is set on the website.
+ * The forms for a session on yaft: what the rider rode, the gear, the wind,
+ * and their notes and rating. Each saves on its own, needs a connection, and
+ * hands the view the website sends back to [onSaved].
  */
 @Composable
 fun EditForms(view: SessionView, account: Account, onSaved: (SessionView) -> Unit) {
     CategoryForm(view, account, onSaved)
+    GearForm(view, account, onSaved)
     if (view.category.usesWind) WindForm(view, account, onSaved)
     NotesForm(view, account, onSaved)
 }
@@ -62,6 +73,101 @@ private fun CategoryForm(view: SessionView, account: Account, onSaved: (SessionV
                 }
             }
         }
+    }
+}
+
+/**
+ * The gear per slot of the session's category, picked from the rider's gear on
+ * yaft (adding gear is on the website). The slots follow the saved category. A
+ * split session keeps its gear on its parts, so it's shown here read-only.
+ */
+@Composable
+private fun GearForm(view: SessionView, account: Account, onSaved: (SessionView) -> Unit) {
+    var load by remember { mutableStateOf<GearLoad?>(null) }
+    var attempt by remember { mutableIntStateOf(0) }
+    // A reload keeps the old list on screen until the new one is in.
+    LaunchedEffect(attempt) { load = loadGear(account) }
+    val gear = (load as? GearLoad.Ready)?.gear
+    val context = LocalContext.current
+    val onYaft = { context.startActivity(Intent(Intent.ACTION_VIEW, "${account.siteUrl}/sessions/${view.id}".toUri())) }
+
+    if (view.split) {
+        Leaf(Modifier.fillMaxWidth()) {
+            Text("Gear", style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
+            Text("This session is split into parts, each with its own gear. Change it on yaft.", color = Yaft.ink2, fontSize = 14.sp)
+            if (gear != null) view.parts.forEachIndexed { i, part ->
+                Column(Modifier.padding(top = 12.dp)) {
+                    Text("Part ${i + 1} · from ${timeOfDay(part.startsAt, view.timeZone)}", fontWeight = FontWeight.Bold, style = Yaft.num)
+                    gear.slots(view.category).forEach { slot -> GearLine(slot.label, gear.name(part.gear[slot.slot]) ?: "Not set") }
+                }
+            }
+            InkButton("Edit on yaft", onYaft, Modifier.fillMaxWidth().padding(top = 12.dp), filled = false)
+        }
+        return
+    }
+
+    when (val l = load) {
+        is GearLoad.Ready -> if (l.gear.items.isEmpty()) {
+            Leaf(Modifier.fillMaxWidth()) {
+                Text("Gear", style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
+                Text("Add your boards, foils and wings on yaft, then pick them here.", color = Yaft.ink2, fontSize = 14.sp)
+                InkButton("Add gear on yaft", { context.startActivity(Intent(Intent.ACTION_VIEW, "${account.siteUrl}/gear".toUri())) }, Modifier.fillMaxWidth().padding(top = 12.dp), filled = false)
+                InkButton("Reload", { attempt++ }, Modifier.fillMaxWidth().padding(top = 8.dp), filled = false)
+            }
+        } else GearPicks(view, l.gear, account, onSaved) { attempt++ }
+        else -> Leaf(Modifier.fillMaxWidth()) {
+            Text("Gear", style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
+            when (l) {
+                null -> Text("Loading your gear…", color = Yaft.ink2)
+                GearLoad.SignedOut -> Text("Sign in again to pick your gear.", color = Yaft.danger)
+                is GearLoad.Failed -> {
+                    Text(l.message, color = Yaft.danger)
+                    InkButton("Try again", { load = null; attempt++ }, Modifier.fillMaxWidth().padding(top = 12.dp), filled = false)
+                }
+                is GearLoad.Ready -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun GearPicks(view: SessionView, gear: GearList, account: Account, onSaved: (SessionView) -> Unit, onRefused: () -> Unit) {
+    val slots = gear.slots(view.category)
+    // Keyed on what's saved, so saving another form keeps what's picked here.
+    var picks by remember(view.gear, view.category) { mutableStateOf(view.gear) }
+    val changed = slots.any { picks[it.slot] != view.gear[it.slot] }
+    // Every slot of the category goes; a slot it doesn't show (a wing after switching to dockstart) stays as it is.
+    val edit = { SessionEdit.Gear(slots.associate { it.slot to picks[it.slot] }) }
+    // Refused gear may be gone from the list: load it again.
+    Form("Gear", view, account, onSaved, changed = changed, edit = edit, onRefused = onRefused) {
+        Text("Pick from your gear on yaft.", color = Yaft.ink2, fontSize = 14.sp)
+        slots.forEach { slot -> SlotPicker(slot, gear, current = view.gear[slot.slot], picked = picks[slot.slot]) { picks = picks + (slot.slot to it) } }
+    }
+}
+
+@Composable
+private fun SlotPicker(slot: GearSlot, gear: GearList, current: String?, picked: String?, onPick: (String?) -> Unit) {
+    val options = gear.options(slot, current)
+    var menu by remember { mutableStateOf(false) }
+    Text(slot.label, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(top = 12.dp))
+    if (options.isEmpty()) {
+        Text("No ${slot.label.lowercase()} yet. Add one on yaft.", color = Yaft.ink2, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        return
+    }
+    Box {
+        InkButton("${gear.name(picked) ?: "None"}  ▾", { menu = true }, Modifier.fillMaxWidth().padding(top = 4.dp), filled = false)
+        DropdownMenu(menu, { menu = false }) {
+            DropdownMenuItem(text = { Text("None") }, onClick = { onPick(null); menu = false })
+            options.forEach { g -> DropdownMenuItem(text = { Text(if (g.retired) "${g.name} (retired)" else g.name) }, onClick = { onPick(g.id); menu = false }) }
+        }
+    }
+}
+
+@Composable
+private fun GearLine(label: String, name: String) {
+    Row(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+        Text(label, color = Yaft.ink2, modifier = Modifier.weight(1f))
+        Text(name, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -154,6 +260,7 @@ private fun Form(
     onSaved: (SessionView) -> Unit,
     changed: Boolean,
     edit: () -> SessionEdit,
+    onRefused: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -171,7 +278,10 @@ private fun Form(
                         onSaved(r.view)
                         "Saved to yaft." to false
                     }
-                    is EditResult.Invalid -> r.message to true
+                    is EditResult.Invalid -> {
+                        onRefused()
+                        r.message to true
+                    }
                     EditResult.SignedOut -> "Sign in again to save this." to true
                     EditResult.Gone -> "This session isn't on yaft any more. It may have been deleted on the website." to true
                     is EditResult.Failed -> r.message to true

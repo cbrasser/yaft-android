@@ -67,6 +67,10 @@ data class SessionView(
     val hasHeartRate: Boolean,
     val notes: String,
     val rating: Int?,
+    /** The session's gear ids per slot column (board_id…); all null once it's split into parts. */
+    val gear: Map<String, String?> = emptyMap(),
+    /** Parts in time order, each with its own gear; empty when the session isn't split. */
+    val parts: List<PartGear> = emptyList(),
     /** Per point on foil, for up-down and downwind sessions: 1 up, 2 reach, 3 down, 4 turn, 0 none. */
     val phase: List<Int>? = null,
     /** The wind direction the rider set (degrees it blows from); null when yaft estimates it. */
@@ -75,6 +79,9 @@ data class SessionView(
     val windBase: Int? = null,
     val windGust: Int? = null,
 ) {
+    /** Split into parts on the website: the gear is on the parts, so the app shows it read-only. */
+    val split: Boolean get() = parts.isNotEmpty()
+
     companion object {
         /** The server API version that serves this view. */
         const val API_VERSION = 2
@@ -122,6 +129,8 @@ data class SessionView(
                 hasHeartRate = !track.isNull("hr"),
                 notes = response.optString("notes"),
                 rating = if (response.isNull("rating")) null else response.optInt("rating"),
+                gear = gearIds(s.optJSONObject("details")?.optJSONObject("gear")),
+                parts = s.optJSONObject("details")?.optJSONArray("parts")?.objects()?.map { PartGear(it.getLong("startsAt"), gearIds(it.optJSONObject("gear"))) }.orEmpty(),
                 phase = track.optJSONArray("phase")?.let { p -> (0 until p.length()).map { p.optInt(it) } },
                 savedWind = s.num("savedWind")?.toInt(),
                 windBase = s.optJSONObject("details")?.num("windBase")?.toInt(),

@@ -1,0 +1,187 @@
+{
+ "gear": [
+  {
+   "id": "62aa254b-e2e3-495f-85d3-faee5d237c73",
+   "kind": "board",
+   "name": "Flow 110",
+   "retired": false
+  },
+  {
+   "id": "3f944d6a-0dd8-4b12-b57b-336626a9c6e0",
+   "kind": "board",
+   "name": "Kode 85",
+   "retired": false
+  },
+  {
+   "id": "5224ab78-8e99-4dd9-8ebd-db9fffd89f69",
+   "kind": "board",
+   "name": "Retired board",
+   "retired": true
+  },
+  {
+   "id": "9cb90dfc-2bd7-4f24-80d9-9a3ef4fa0f08",
+   "kind": "frontwing",
+   "name": "Eagle 890",
+   "retired": false
+  },
+  {
+   "id": "aad95db0-7aeb-43fe-b7fb-938a9d848e71",
+   "kind": "stab",
+   "name": "Tail 180",
+   "retired": false
+  },
+  {
+   "id": "34c43443-7019-401b-bb6a-575201d3db70",
+   "kind": "wing",
+   "name": "Strike 5",
+   "retired": false
+  },
+  {
+   "id": "b8bc1cfb-d3c5-4b4c-a355-f76efdcfb157",
+   "kind": "parawing",
+   "name": "Hydra 3",
+   "retired": false
+  }
+ ],
+ "slots": {
+  "dockstart": [
+   {
+    "slot": "board_id",
+    "kind": "board",
+    "label": "Board"
+   },
+   {
+    "slot": "frontwing_id",
+    "kind": "frontwing",
+    "label": "Front wing"
+   },
+   {
+    "slot": "stab_id",
+    "kind": "stab",
+    "label": "Stab"
+   }
+  ],
+  "wakethieve": [
+   {
+    "slot": "board_id",
+    "kind": "board",
+    "label": "Board"
+   },
+   {
+    "slot": "frontwing_id",
+    "kind": "frontwing",
+    "label": "Front wing"
+   },
+   {
+    "slot": "stab_id",
+    "kind": "stab",
+    "label": "Stab"
+   }
+  ],
+  "wingfoil": [
+   {
+    "slot": "board_id",
+    "kind": "board",
+    "label": "Board"
+   },
+   {
+    "slot": "frontwing_id",
+    "kind": "frontwing",
+    "label": "Front wing"
+   },
+   {
+    "slot": "stab_id",
+    "kind": "stab",
+    "label": "Stab"
+   },
+   {
+    "slot": "wing_id",
+    "kind": "wing",
+    "label": "Wing"
+   }
+  ],
+  "parawing": [
+   {
+    "slot": "board_id",
+    "kind": "board",
+    "label": "Board"
+   },
+   {
+    "slot": "frontwing_id",
+    "kind": "frontwing",
+    "label": "Front wing"
+   },
+   {
+    "slot": "stab_id",
+    "kind": "stab",
+    "label": "Stab"
+   },
+   {
+    "slot": "wing_id",
+    "kind": "parawing",
+    "label": "Parawing"
+   }
+  ],
+  "parawing-updown": [
+   {
+    "slot": "board_id",
+    "kind": "board",
+    "label": "Board"
+   },
+   {
+    "slot": "frontwing_id",
+    "kind": "frontwing",
+    "label": "Front wing"
+   },
+   {
+    "slot": "stab_id",
+    "kind": "stab",
+    "label": "Stab"
+   },
+   {
+    "slot": "wing_id",
+    "kind": "parawing",
+    "label": "Parawing"
+   }
+  ],
+  "parawing-downwind": [
+   {
+    "slot": "board_id",
+    "kind": "board",
+    "label": "Board"
+   },
+   {
+    "slot": "frontwing_id",
+    "kind": "frontwing",
+    "label": "Front wing"
+   },
+   {
+    "slot": "stab_id",
+    "kind": "stab",
+    "label": "Stab"
+   },
+   {
+    "slot": "wing_id",
+    "kind": "parawing",
+    "label": "Parawing"
+   }
+  ],
+  "sup-downwind": [
+   {
+    "slot": "board_id",
+    "kind": "board",
+    "label": "Board"
+   },
+   {
+    "slot": "frontwing_id",
+    "kind": "frontwing",
+    "label": "Front wing"
+   },
+   {
+    "slot": "stab_id",
+    "kind": "stab",
+    "label": "Stab"
+   }
+  ]
+ }
+}
