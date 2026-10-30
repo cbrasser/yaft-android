@@ -34,7 +34,7 @@ keytool -list -v -keystore ~/yaft-release.jks -alias yaft | grep SHA256
 
 ## Reproducible builds
 
-F-Droid only publishes our APK if its rebuild is identical apart from the signature. `app/build.gradle.kts` turns off the two known sources of differences (version-control info and baseline profiles). Keep JDK 21 in CI, since F-Droid's recipe builds with it too. To check locally that two clean builds match:
+F-Droid only publishes our APK if its rebuild is identical apart from the signature. `app/build.gradle.kts` turns off the two known sources of differences (version-control info and baseline profiles), and packs MapLibre's native library as it comes from Maven Central instead of stripping it again with whichever NDK the machine has. Keep JDK 21 in CI, since F-Droid's recipe builds with it too. To check locally that two clean builds match:
 
 ```bash
 ./gradlew clean assembleRelease && shasum -a 256 app/build/outputs/apk/release/*.apk

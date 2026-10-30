@@ -22,7 +22,8 @@ fun mapTrack(view: SessionView): MapTrack {
     val off = mutableListOf<String>()
     val foil = mutableListOf<String>()
     var next = 0
-    for (run in view.runs) {
+    // Runs that don't fit the track (it never happens with yaft's data) are left out rather than crash the screen.
+    for (run in view.runs.filter { it.points.first >= next && it.points.last < coords.size }) {
         // The stretch before a run runs on to the run's first point.
         if (run.points.first > next) off += line(coords.subList(next, run.points.first + 1))
         foil += runLines(coords, run.points, run.number, view.phase)

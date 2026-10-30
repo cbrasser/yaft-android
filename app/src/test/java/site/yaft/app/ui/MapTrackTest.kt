@@ -39,7 +39,7 @@ class MapTrackTest {
         assertEquals(listOf(11, 19, 46), foil.map { it.coordCount() })
     }
 
-    // The map opens on the whole track (the box the server sends as track.bounds) and frames a run when one is picked.
+    // The map opens on the whole track (the same box the server sends as track.bounds) and frames a run when one is picked.
     @Test
     fun framesTheTrackOrOneRun() {
         assertEquals(Bounds(0.0, 0.0, 0.9125, 1.0), mapTrack(view("session-view-dockstart.json")).bounds)
