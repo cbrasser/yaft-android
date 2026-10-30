@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -154,11 +155,12 @@ private fun chartShape(view: SessionView, i0: Int, i1: Int, hr: List<Int>?): Cha
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Readout(view: SessionView, i: Int?, hr: List<Int>?) {
+    // One line tall either way, so the chart doesn't jump under the finger on the first touch.
     if (i == null) {
-        Text("Drag along the chart to read a moment and see it on the map.", color = Yaft.ink2, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        Text("Drag along the chart to read a moment.", color = Yaft.ink2, fontSize = 14.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp).heightIn(min = 30.dp))
         return
     }
-    FlowRow(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.Bottom) {
+    FlowRow(Modifier.fillMaxWidth().padding(top = 4.dp).heightIn(min = 30.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.Bottom) {
         Text(timeOfDaySeconds(view.startedAt + view.seconds[i] * 1000L, view.timeZone), color = Yaft.ink2, fontWeight = FontWeight.SemiBold, style = Yaft.num, modifier = Modifier.align(Alignment.Bottom))
         Value(kmh(view.speed[i]), "km/h")
         hr?.getOrNull(i)?.takeIf { it > 0 }?.let { Value("$it", "bpm") }
