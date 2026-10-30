@@ -50,6 +50,8 @@ data class PartGear(val startsAt: Long, val gear: Map<String, String?>)
 internal fun gearIds(j: JSONObject?): Map<String, String?> =
     j?.keys()?.asSequence()?.associateWith { if (j.isNull(it)) null else j.optString(it) }.orEmpty()
 
+const val OLD_SERVER = "This yaft server can't change gear from the app yet. Change it on the website."
+
 /** What loading the rider's gear came to. */
 sealed interface GearLoad {
     data class Ready(val gear: GearList) : GearLoad
@@ -64,6 +66,8 @@ suspend fun loadGear(account: Account): GearLoad = withContext(Dispatchers.IO) {
         val res = Http.request("GET", "${account.siteUrl}/api/app/gear", headers = mapOf("Authorization" to "Bearer $token"))
         when {
             res.status == 401 -> GearLoad.SignedOut
+            // A server from before the gear endpoint (API version 2 with edits but no gear).
+            res.status == 404 -> GearLoad.Failed(OLD_SERVER)
             !res.ok -> GearLoad.Failed(res.json.optString("error").ifEmpty { "yaft couldn't load your gear. Try again later." })
             else -> GearLoad.Ready(GearList.fromJson(res.json))
         }

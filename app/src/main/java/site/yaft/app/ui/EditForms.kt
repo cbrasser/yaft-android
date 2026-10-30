@@ -85,23 +85,24 @@ private fun CategoryForm(view: SessionView, account: Account, onSaved: (SessionV
 private fun GearForm(view: SessionView, account: Account, onSaved: (SessionView) -> Unit) {
     var load by remember { mutableStateOf<GearLoad?>(null) }
     var attempt by remember { mutableIntStateOf(0) }
-    // A reload keeps the old list on screen until the new one is in.
+    // After a refused save the list reloads in place; only "Try again" shows it loading.
     LaunchedEffect(attempt) { load = loadGear(account) }
     val gear = (load as? GearLoad.Ready)?.gear
     val context = LocalContext.current
-    val onYaft = { context.startActivity(Intent(Intent.ACTION_VIEW, "${account.siteUrl}/sessions/${view.id}".toUri())) }
+    val open = { path: String -> context.startActivity(Intent(Intent.ACTION_VIEW, "${account.siteUrl}$path".toUri())) }
 
     if (view.split) {
         Leaf(Modifier.fillMaxWidth()) {
-            Text("Gear", style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
+            FormTitle("Gear")
             Text("This session is split into parts, each with its own gear. Change it on yaft.", color = Yaft.ink2, fontSize = 14.sp)
+            (load as? GearLoad.Failed)?.let { Text(it.message, color = Yaft.danger, modifier = Modifier.padding(top = 8.dp)) }
             if (gear != null) view.parts.forEachIndexed { i, part ->
                 Column(Modifier.padding(top = 12.dp)) {
                     Text("Part ${i + 1} · from ${timeOfDay(part.startsAt, view.timeZone)}", fontWeight = FontWeight.Bold, style = Yaft.num)
                     gear.slots(view.category).forEach { slot -> GearLine(slot.label, gear.name(part.gear[slot.slot]) ?: "Not set") }
                 }
             }
-            InkButton("Edit on yaft", onYaft, Modifier.fillMaxWidth().padding(top = 12.dp), filled = false)
+            InkButton("Edit on yaft", { open("/sessions/${view.id}") }, Modifier.fillMaxWidth().padding(top = 12.dp), filled = false)
         }
         return
     }
@@ -109,14 +110,14 @@ private fun GearForm(view: SessionView, account: Account, onSaved: (SessionView)
     when (val l = load) {
         is GearLoad.Ready -> if (l.gear.items.isEmpty()) {
             Leaf(Modifier.fillMaxWidth()) {
-                Text("Gear", style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
+                FormTitle("Gear")
                 Text("Add your boards, foils and wings on yaft, then pick them here.", color = Yaft.ink2, fontSize = 14.sp)
-                InkButton("Add gear on yaft", { context.startActivity(Intent(Intent.ACTION_VIEW, "${account.siteUrl}/gear".toUri())) }, Modifier.fillMaxWidth().padding(top = 12.dp), filled = false)
+                InkButton("Add gear on yaft", { open("/gear") }, Modifier.fillMaxWidth().padding(top = 12.dp), filled = false)
                 InkButton("Reload", { attempt++ }, Modifier.fillMaxWidth().padding(top = 8.dp), filled = false)
             }
         } else GearPicks(view, l.gear, account, onSaved) { attempt++ }
         else -> Leaf(Modifier.fillMaxWidth()) {
-            Text("Gear", style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
+            FormTitle("Gear")
             when (l) {
                 null -> Text("Loading your gear…", color = Yaft.ink2)
                 GearLoad.SignedOut -> Text("Sign in again to pick your gear.", color = Yaft.danger)
@@ -162,6 +163,9 @@ private fun SlotPicker(slot: GearSlot, gear: GearList, current: String?, picked:
         }
     }
 }
+
+@Composable
+private fun FormTitle(title: String) = Text(title, style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
 
 @Composable
 private fun GearLine(label: String, name: String) {
@@ -267,7 +271,7 @@ private fun Form(
     var busy by remember { mutableStateOf(false) }
     var message by remember(view.id) { mutableStateOf<Pair<String, Boolean>?>(null) }
     Leaf(Modifier.fillMaxWidth()) {
-        Text(title, style = Yaft.display, fontSize = 22.sp, modifier = Modifier.padding(bottom = 4.dp))
+        FormTitle(title)
         content()
         InkButton(if (busy) "Saving…" else "Save", {
             busy = true

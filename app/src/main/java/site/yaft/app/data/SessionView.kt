@@ -130,7 +130,7 @@ data class SessionView(
                 notes = response.optString("notes"),
                 rating = if (response.isNull("rating")) null else response.optInt("rating"),
                 gear = gearIds(s.optJSONObject("details")?.optJSONObject("gear")),
-                parts = s.optJSONObject("details")?.optJSONArray("parts")?.objects()?.map { PartGear(it.getLong("startsAt"), gearIds(it.optJSONObject("gear"))) }.orEmpty(),
+                parts = s.optJSONObject("details")?.optJSONArray("parts")?.objects()?.map { PartGear(it.optLong("startsAt"), gearIds(it.optJSONObject("gear"))) }.orEmpty(),
                 phase = track.optJSONArray("phase")?.let { p -> (0 until p.length()).map { p.optInt(it) } },
                 savedWind = s.num("savedWind")?.toInt(),
                 windBase = s.optJSONObject("details")?.num("windBase")?.toInt(),
