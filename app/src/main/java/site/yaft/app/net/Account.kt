@@ -56,12 +56,34 @@ class Account(context: Context) {
                 putString(SITE, base)
                 putString(SUPABASE_URL, url)
                 putString(SUPABASE_KEY, key)
+                putInt(API_VERSION, apiVersionOf(config.json))
             }
+            versionChecked = true
             val previous = prefs.getString(USER_ID, null)
             saveTokens(res.json)
             if (previous != null && previous != prefs.getString(USER_ID, null)) onSignOut()
             _rider.value = currentRider()
         }
+    }
+
+    /** Whether this run of the app has asked the server for its API version yet. */
+    @Volatile private var versionChecked = false
+
+    /**
+     * The server's API version (GET /api/app/config), asked once per run of the
+     * app so a server update is noticed; offline, the last one seen. Null when
+     * it was never seen. A server without accounts any more counts as 1.
+     */
+    suspend fun apiVersion(): Int? = withContext(Dispatchers.IO) {
+        if (!versionChecked) try {
+            val config = Http.request("GET", "$siteUrl/api/app/config")
+            if (config.ok) prefs.edit { putInt(API_VERSION, apiVersionOf(config.json)) }
+            else if (config.status == 404) prefs.edit { putInt(API_VERSION, 1) }
+            versionChecked = true
+        } catch (_: NetworkError) {
+            // Offline: keep the last version seen.
+        }
+        prefs.getInt(API_VERSION, 0).takeIf { it > 0 }
     }
 
     /** Called after signing out, so data of that rider is dropped. */
@@ -120,6 +142,10 @@ class Account(context: Context) {
 
     companion object {
         const val DEFAULT_SITE = "https://yaft.site"
+
+        /** The config's API version; servers from before the field count as 1. */
+        fun apiVersionOf(config: JSONObject): Int = config.optInt("apiVersion", 1)
+
         private const val SITE = "site"
         private const val SUPABASE_URL = "supabaseUrl"
         private const val SUPABASE_KEY = "supabaseKey"
@@ -128,5 +154,6 @@ class Account(context: Context) {
         private const val EXPIRES_AT = "expiresAt"
         private const val EMAIL = "email"
         private const val USER_ID = "userId"
+        private const val API_VERSION = "apiVersion"
     }
 }

@@ -29,10 +29,11 @@ fun TrackCanvas(points: List<TrackPoint>, category: Category, modifier: Modifier
 /**
  * A track drawn without a map (no tiles, so it works offline): on-foil
  * stretches in ink, the rest in grey, start as a dot. North is up.
- * [lonLat] holds [lon, lat] pairs, like the website's preview.
+ * [lonLat] holds [lon, lat] pairs, like the website's preview. With
+ * [highlight], those points stand out in ink and the rest of the track fades to grey.
  */
 @Composable
-fun TrackCanvas(lonLat: List<DoubleArray>, onFoil: List<Boolean>, modifier: Modifier = Modifier) {
+fun TrackCanvas(lonLat: List<DoubleArray>, onFoil: List<Boolean>, modifier: Modifier = Modifier, highlight: IntRange? = null) {
     Canvas(modifier) {
         drawRect(Yaft.mapWater)
         if (lonLat.size < 2) return@Canvas
@@ -59,10 +60,21 @@ fun TrackCanvas(lonLat: List<DoubleArray>, onFoil: List<Boolean>, modifier: Modi
             }
             drawPath(
                 path,
-                color = if (state) Yaft.ink else Yaft.reach,
+                color = if (state && highlight == null) Yaft.ink else Yaft.reach,
                 style = Stroke(width = (if (state) 3.dp else 2.dp).toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
+                alpha = if (highlight == null) 1f else 0.6f,
             )
             i = j - 1
+        }
+        highlight?.let { range ->
+            val first = range.first.coerceIn(0, lonLat.size - 1)
+            val last = range.last.coerceIn(first, lonLat.size - 1)
+            val path = Path().apply {
+                moveTo(at(first).x, at(first).y)
+                for (k in first + 1..last) lineTo(at(k).x, at(k).y)
+            }
+            drawPath(path, Yaft.ink, style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawCircle(Yaft.ink, radius = 5.dp.toPx(), center = at(first))
         }
         drawCircle(Yaft.ink, radius = 6.dp.toPx(), center = at(0))
         drawCircle(Yaft.paper, radius = 3.dp.toPx(), center = at(0))

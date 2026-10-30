@@ -53,4 +53,8 @@ object Http {
     }
 }
 
-class NetworkError(cause: Throwable) : Exception("No connection to yaft. Try again when you're online.", cause)
+class NetworkError(cause: Throwable) : Exception(MESSAGE, cause) {
+    companion object {
+        const val MESSAGE = "No connection to yaft. Try again when you're online."
+    }
+}
