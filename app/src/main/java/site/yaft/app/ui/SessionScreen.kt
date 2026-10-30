@@ -43,6 +43,8 @@ import kotlinx.coroutines.withContext
 import site.yaft.app.data.RemoteSession
 import site.yaft.app.data.SessionMeta
 import site.yaft.app.data.SessionStore
+import site.yaft.app.data.ViewLoad
+import site.yaft.app.net.Account
 import site.yaft.app.net.UploadResult
 import site.yaft.app.net.Uploader
 import site.yaft.app.track.Category
@@ -50,7 +52,7 @@ import site.yaft.app.track.Category
 @Composable
 fun SessionScreen(
     meta: SessionMeta,
-    siteUrl: String,
+    account: Account,
     signedIn: Boolean,
     uploader: Uploader,
     remote: RemoteSession?,
@@ -68,6 +70,9 @@ fun SessionScreen(
     var duplicateOf by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val uploaded = meta.uploadedAt != null
+    val siteUrl = account.siteUrl
+    // Once it's on yaft, the website's analysis replaces the phone's numbers.
+    val (load, retry) = rememberSessionView(account, meta.id, enabled = uploaded && signedIn)
 
     // Save the spot name as it's typed (it goes up with the session).
     LaunchedEffect(place) { if (place != meta.place) withContext(Dispatchers.IO) { SessionStore.save(meta.copy(place = place.take(80))) } }
@@ -90,30 +95,36 @@ fun SessionScreen(
     }
     fun open(url: String) = context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
 
+    val scroll = rememberScrollState()
     Column(Modifier.fillMaxSize().background(Yaft.hue(meta.category))) {
         TopBar(meta.category.label, onBack = onBack)
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+            Modifier.weight(1f).verticalScroll(scroll).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Leaf(Modifier.fillMaxWidth(), padding = 0.dp) {
-                TrackCanvas(points, meta.category, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)))
-            }
-            Leaf(Modifier.fillMaxWidth()) {
-                Text(dateTime(meta.startedAt, meta.timeZone), fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(12.dp))
-                Row {
-                    Stat("Distance", km(meta.distanceM), Modifier.weight(1f))
-                    Stat("Time", duration(meta.durationS), Modifier.weight(1f))
+            val view = (load as? ViewLoad.Ready)?.view
+            if (view != null) FullSession(view, scroll)
+            else {
+                if (uploaded && signedIn && load != ViewLoad.Unsupported) ViewProblem(load, retry, onSignIn)
+                Leaf(Modifier.fillMaxWidth(), padding = 0.dp) {
+                    TrackCanvas(points, meta.category, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(12.dp)))
                 }
-                Spacer(Modifier.height(12.dp))
-                Row {
-                    Stat("On foil", duration(meta.foilTimeS), Modifier.weight(1f))
-                    Stat("Top speed (3 s)", "${kmh(meta.top3Kmh)} km/h", Modifier.weight(1f))
+                Leaf(Modifier.fillMaxWidth()) {
+                    Text(dateTime(meta.startedAt, meta.timeZone), fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    Row {
+                        Stat("Distance", km(meta.distanceM), Modifier.weight(1f))
+                        Stat("Time", duration(meta.durationS), Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row {
+                        Stat("On foil", duration(meta.foilTimeS), Modifier.weight(1f))
+                        Stat("Top speed (3 s)", "${kmh(meta.top3Kmh)} km/h", Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    if (uploaded && remote != null) Text(remote.summary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    else Text("yaft.site works out runs, flights, turns and wind when you upload.", color = Yaft.ink2)
                 }
-                Spacer(Modifier.height(12.dp))
-                if (uploaded && remote != null) Text(remote.summary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                else Text("yaft.site works out runs, flights, turns and wind when you upload.", color = Yaft.ink2)
             }
             Leaf(Modifier.fillMaxWidth()) {
                 if (!uploaded) {

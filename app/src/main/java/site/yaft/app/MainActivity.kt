@@ -165,14 +165,14 @@ private fun App(app: YaftApp, shared: MutableStateFlow<Uri?>) {
             }
             route.startsWith("yaft/") -> {
                 val s = remote.sessions.firstOrNull { it.id == route.removePrefix("yaft/") }
-                if (s == null) route = "sessions" else RemoteSessionScreen(s, app.account.siteUrl, onBack = { route = "sessions" })
+                if (s == null) route = "sessions" else RemoteSessionScreen(s, app.account, onBack = { route = "sessions" }, onSignIn = { route = "account" })
             }
             route == "account" -> AccountScreen(app.account, rider, onBack = { route = "ready" })
             route.startsWith("session/") -> {
                 val meta = sessions.firstOrNull { it.id == route.removePrefix("session/") }
                 if (meta == null) route = "sessions"
                 else SessionScreen(
-                    meta, app.account.siteUrl, rider != null, app.uploader,
+                    meta, app.account, rider != null, app.uploader,
                     remote = remote.sessions.firstOrNull { it.id == meta.id },
                     onUploaded = { scope.launch { app.remote.refresh() } },
                     onBack = { route = "sessions" },
