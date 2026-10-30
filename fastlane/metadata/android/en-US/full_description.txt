@@ -13,6 +13,8 @@ yaft (yet another foil tracker) records hydrofoil sessions with your phone's GPS
 <li>See your track and the basic numbers on the phone, offline.</li>
 <li>Upload to your yaft.site account for the full analysis: runs and flights, tacks and jibes, wind, upwind angles, downwind legs and personal bests.</li>
 <li>Browse all your yaft sessions on the phone, including ones from your watch or Strava, even offline.</li>
+<li>Open any yaft session for its full analysis: the track on a map, coloured by on foil, speed or heart rate, a speed and heart-rate chart, the numbers and the runs or flights.</li>
+<li>Change what you rode, the wind, your gear, notes and rating from the phone.</li>
 <li>Or share the GPX file with any other app.</li>
 </ul>
 
